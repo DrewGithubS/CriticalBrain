@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2022.12.18)  11 MAR 2023 15:24
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2022.12.18)  11 MAR 2023 16:10
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -81,8 +81,7 @@ LaTeX Font Info:    Redeclaring font encoding OMS on input line 567.
 \mathdisplay@stack=\toks18
 LaTeX Info: Redefining \[ on input line 2665.
 LaTeX Info: Redefining \] on input line 2666.
-)
-No file Idea.aux.
+) (./Idea.aux)
 \openout1 = `Idea.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 12.
@@ -97,12 +96,13 @@ LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 12.
 LaTeX Font Info:    ... okay on input line 12.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 12.
 LaTeX Font Info:    ... okay on input line 12.
+
 [1
 
 {/usr/share/texlive/texmf/fonts/map/pdftex/updmap/pdftex.map}] (./Idea.aux) ) 
 Here is how much of TeX's memory you used:
- 836 strings out of 495063
- 9235 string characters out of 3182200
+ 838 strings out of 495063
+ 9253 string characters out of 3182200
  58224 words of memory out of 3000000
  4077 multiletter control sequences out of 15000+200000
  8716 words of font info for 32 fonts, out of 3000000 for 9000

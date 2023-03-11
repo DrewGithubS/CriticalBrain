@@ -3,7 +3,7 @@ OPTS ?= -std=c99 -g -O2
 
 GCC=gcc
 
-objects := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
+objects := $(patsubst %.c,%.o,$(wildcard *.c))
 
 
 .PHONY: all
@@ -13,10 +13,11 @@ all: $(Exec)
 check:
 	echo Objects are $(objects)
 
-$(objects): %.o: %.cpp *.h
+$(objects): %.o: %.c *.h
 	$(GCC) -c $(OPTS) $< -o $@
 
-$(Exec): $(objects) $(cu_objects)
+$(Exec): $(objects)
+	echo "Testing"
 	$(GCC) $(OPTS) $(objects) -o $(Exec)
 
 .PHONY: clean
