@@ -1,0 +1,28 @@
+% This is a simple sample document.  For more complicated documents take a look in the exercise tab. Note that everything that comes after a % symbol is treated as comment and ignored when the code is compiled.
+
+\documentclass{article} % \documentclass{} is the first command in any LaTeX code.  It is used to define what kind of document you are creating such as an article or a book, and begins the document preamble
+
+\usepackage{amsmath} % \usepackage is a command that allows you to add functionality to your LaTeX code
+
+\title{Brain Criticality Hypothesis Simulation} % Sets article title
+\author{Drew Smith} % Sets authors name
+\date{\today} % Sets date for date compiled
+
+% The preamble ends with the command \begin{document}
+\begin{document} % All begin commands must be paired with an end command somewhere
+    \maketitle % creates title using information in preamble (title, author, date)
+    
+    \section{Idea} % creates a section
+    
+    \textbf{Goal:} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
+    \begin{itemize}
+        \item The neural network will have a branching parameter of about 1.
+        \item Each neuron will have roughly 120 connections.
+        \item Each neuron will have an activation threshold.
+        \item I will attempt to have 16\% of the neurons firing at any given moment.
+    \end{itemize}
+    I will attempt to teach the neural network simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
+
+    \section{Design}
+
+\end{document} % This is the end of the document

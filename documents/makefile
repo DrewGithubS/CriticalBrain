@@ -3,11 +3,11 @@ OPTS ?= -std=c99 -g -O2
 .PHONY: all
 all:
 	echo test
-	pdflatex Idea.tex
+	pdflatex idea.tex
 
 .PHONY: check
 check:
-	echo Objects are Idea.tex
+	echo Objects are idea.tex
 
 .PHONY: clean
 clean:
