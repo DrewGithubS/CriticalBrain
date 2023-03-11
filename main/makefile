@@ -17,7 +17,6 @@ $(objects): %.o: %.c *.h
 	$(GCC) -c $(OPTS) $< -o $@
 
 $(Exec): $(objects)
-	echo "Testing"
 	$(GCC) $(OPTS) $(objects) -o $(Exec)
 
 .PHONY: clean
