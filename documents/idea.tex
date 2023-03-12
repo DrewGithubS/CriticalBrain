@@ -1,8 +1,15 @@
 % This is a simple sample document.  For more complicated documents take a look in the exercise tab. Note that everything that comes after a % symbol is treated as comment and ignored when the code is compiled.
 
+\newcommand\connectionCount{120}
+
+
 \documentclass{article} % \documentclass{} is the first command in any LaTeX code.  It is used to define what kind of document you are creating such as an article or a book, and begins the document preamble
 
+
 \usepackage{amsmath} % \usepackage is a command that allows you to add functionality to your LaTeX code
+\usepackage{enumitem} % Used to get rid of line spacing in enumerated lists and itemized lists
+
+\usepackage[utf8]{inputenc} % Used to create newlines
 
 \title{Brain Criticality Hypothesis Simulation} % Sets article title
 \author{Drew Smith} % Sets authors name
@@ -14,15 +21,32 @@
     
     \section{Idea} % creates a section
     
-    \textbf{Goal:} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
-    \begin{itemize}
+    \textbf{Goal} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
+    
+    \begin{itemize}[noitemsep]
         \item The neural network will have a branching parameter of about 1.
-        \item Each neuron will have roughly 120 connections.
+        \item Each neuron will have roughly \connectionCount connections.
         \item Each neuron will have an activation threshold.
-        \item I will attempt to have 16\% of the neurons firing at any given moment.
+        \item Neuron inhibitory and excitatory postsynaptic potentials will fade over time.
     \end{itemize}
+
     I will attempt to teach the neural network simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
 
     \section{Design}
+
+    \textbf{Overview} The neural network will take the form of a directed graph. Each neuron will have about \connectionCount receiving and transmitting connections to other neurons.\newline
+
+    \textbf{Connections} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+
+    \begin{enumerate}[noitemsep]
+        \item Source neuron
+        \item Target neuron 
+        \item Weight
+    \end{enumerate}
+    The functions of each attribute will be described in the following sections.\newline
+
+    \textbf{Transmitting} Upon activation, a neuron will send an activation to each of its forward connections with a signal strength based on the weight assigned to that connection.\newline
+
+    \textbf{Receiving} Upon reception of a signal from a connection, a neuron will add the to its level of exicitation. 
 
 \end{document} % This is the end of the document

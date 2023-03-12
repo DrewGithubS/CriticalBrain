@@ -1,13 +1,14 @@
 OPTS ?= -std=c99 -g -O2
 
+objects := $(sort $(wildcard *.tex))
+
 .PHONY: all
-all:
-	echo test
-	pdflatex idea.tex
+all: $(objects)
+	$(foreach object, $(objects), pdflatex $(object);)
 
 .PHONY: check
 check:
-	echo Objects are idea.tex
+	echo Objects are $(objects)
 
 .PHONY: clean
 clean:
