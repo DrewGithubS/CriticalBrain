@@ -1,24 +1,16 @@
-Exec = main
 OPTS ?= -std=c99 -g -O2
 
-GCC=gcc
-
-objects := $(patsubst %.c,%.o,$(wildcard *.c))
+subdirs := $(sort $(dir $(wildcard */)))
 
 
-.PHONY: all
-all: $(Exec)
+.PHONY:
+all:
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" all;)
 
 .PHONY: check
-check:
-	echo Objects are $(objects)
-
-$(objects): %.o: %.c *.h
-	$(GCC) -c $(OPTS) $< -o $@
-
-$(Exec): $(objects)
-	$(GCC) $(OPTS) $(objects) -o $(Exec)
+check: 
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" check;)
 
 .PHONY: clean
 clean:
-	-rm *.o $(Exec)
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" clean;)
