@@ -19,34 +19,87 @@
 \begin{document} % All begin commands must be paired with an end command somewhere
     \maketitle % creates title using information in preamble (title, author, date)
     
+
     \section{Idea} % creates a section
     
-    \textbf{Goal} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
+        \textbf{Goal} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
+        
+        \begin{itemize}[noitemsep]
+            \item The neural network will have a branching parameter of about 1.
+            \item Each neuron will have roughly \connectionCount connections.
+            \item Each neuron will have an activation threshold.
+            \item Neuron inhibitory and excitatory postsynaptic potentials will fade over time.
+        \end{itemize}
+
+        I will attempt to teach the neural network simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
+
+        \section{Design}
+
+        \textbf{Overview} The neural network will take the form of a directed graph. Each neuron will have about \connectionCount receiving and transmitting connections to other neurons.\newline
+
+        \textbf{Neurons} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+
+        \begin{enumerate}[noitemsep]
+            \item Activation Threshold 
+            \item Location
+            \item Connections
+        \end{enumerate}
+
+        The functions of each attribute will be described in the following sections.\newline
+
+        \textbf{Activation Threshold} Neurons will activate when the excitation of the neuron exceeds the activation threshold.\newline
+
+        \textbf{Location} The location of a neuron is used to determine which neurons the a newly created neuron can connect to. The location will have three components: x, y, and z. The neurons that the source neuron can connect to will be based on the distance between the source and the target.\newline
+
+        \textbf{Connections} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+
+        \begin{enumerate}[noitemsep]
+            \item Source neuron
+            \item Target neuron 
+            \item Weight
+        \end{enumerate}
+        The functions of each attribute will be described in the following sections.\newline
+
+        \textbf{Transmitting} Upon activation, a neuron will send an activation to each of its forward connections with a signal strength based on the weight assigned to that connection. The signal strength will also be affected by the current simulation state (i.e. dehydration may cause weakened signals).\newline
+
+        \textbf{Receiving} Upon reception of a signal from a connection, a neuron will add the to its level of exicitation.\newline
+
+
+    \section{Neuroplasticity}
+
+        \textbf{Connection Strengthening} Connections will increase the magnitude of their connection strength according to the relative firing rate of the target neuron compared to the firing rate of the other target neurons from the same source neuron. Connections will 'share' from a maximum signal strength from the source node.\newline
+        Given a set of connections to target neurons from a source neuron, the strength of each connection will be calculated according to the following equation:\newline
+        \begin{center}
+        \begin{math}
+            C_{if} = C_{i0} + \Delta C_{i}\newline
+            \Delta C_i = k * \frac{F_n - \frac{1}{N}}{\sum_{n=0}^{N} (F_n)}\newline\newline
+        \end{math}
+        \end{center}
+            $C_{if} = $ Final value of i-th connection weight\newline
+            $C_{i0} = $ Initial value of i-th connection weight\newline
+            $\Delta C_{i} = $ The change in the i-th connection weight\newline
+            $F_{i} = $ The firing rate of the i-th neuron\newline
+            $N = $ The amount of outgoing connections to the source neuron\newline
+
+        The maximum signal strength will be determined by averaging the all of the source neuron's target neuron's activation thresholds.
+        
+        \textbf{Connection Death} A connection will die when the target neuron dies.\newline
+
+        \textbf{Neuron Death} A source neuron death will occur when the firing rate of the source neuron becomes lower than a constant threshold. A source neuron can also die if the average magnitude of its connections is below a constant threshold.\newline
+
+        \textbf{Neuron Creation} Upon a neurons death, a new neuron will appear with new incoming and outgoing connections. Outgoing neurons will be created by searching for neurons within a constant distance according to each neuron's location.
+
     
-    \begin{itemize}[noitemsep]
-        \item The neural network will have a branching parameter of about 1.
-        \item Each neuron will have roughly \connectionCount connections.
-        \item Each neuron will have an activation threshold.
-        \item Neuron inhibitory and excitatory postsynaptic potentials will fade over time.
-    \end{itemize}
+    \section{Input/Output}
 
-    I will attempt to teach the neural network simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
+        \textbf{Input} Input neurons will be special neurons that do not have any input connections. The values of the input neurons will be set by the organism simulator based on the simulation's state. Input neurons will not be affected by death and cannot be created. Forward connections that use an input neuron as a source, however, can die.
 
-    \section{Design}
+        \textbf{Output} Output neurons will be special neurons that do not have any output connections. The activation of output neurons affect the organism's actions within the simulation. These actions will affect the simulation's state. Output neurons will not (currently) be affected by death and cannot be created (currently). TBD: How will input neurons to the output neurons get refreshed (killed and re-created).
 
-    \textbf{Overview} The neural network will take the form of a directed graph. Each neuron will have about \connectionCount receiving and transmitting connections to other neurons.\newline
+    \section{Motivating Intelligence}
 
-    \textbf{Connections} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+        \textbf{Self-Preservation} Self-preservation will be indirectly inherent to the rules of neuron survival. Neurons will get killed and replaced if they become inactive. If neurons are over-active, it will negatively affect the organism in the simulation and, in the long-term, negatively affect the individual neurons.\newline
 
-    \begin{enumerate}[noitemsep]
-        \item Source neuron
-        \item Target neuron 
-        \item Weight
-    \end{enumerate}
-    The functions of each attribute will be described in the following sections.\newline
-
-    \textbf{Transmitting} Upon activation, a neuron will send an activation to each of its forward connections with a signal strength based on the weight assigned to that connection.\newline
-
-    \textbf{Receiving} Upon reception of a signal from a connection, a neuron will add the to its level of exicitation. 
+        
 
 \end{document} % This is the end of the document
