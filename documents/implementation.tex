@@ -1,0 +1,42 @@
+% This is a simple sample document.  For more complicated documents take a look in the exercise tab. Note that everything that comes after a % symbol is treated as comment and ignored when the code is compiled.
+
+\documentclass{article} % \documentclass{} is the first command in any LaTeX code.  It is used to define what kind of document you are creating such as an article or a book, and begins the document preamble
+
+
+\usepackage{amsmath} % \usepackage is a command that allows you to add functionality to your LaTeX code
+\usepackage{enumitem} % Used to get rid of line spacing in enumerated lists and itemized lists
+
+\usepackage[utf8]{inputenc} % Used to create newlines
+
+\title{Brain Criticality Hypothesis Simulation - Implementation} % Sets article title
+\author{Drew Smith} % Sets authors name
+\date{\today} % Sets date for date compiled
+
+% The preamble ends with the command \begin{document}
+\begin{document} % All begin commands must be paired with an end command somewhere
+    \maketitle % creates title using information in preamble (title, author, date)
+    
+    \section{Overview}
+        \subsection{Summary}
+            The NN will be implemented in C++ and CUDA. Activations will all happen concurrently, but not asynchronously. This means that on every 'tick', all of the activations will occur at the same time in terms of simulation time. Each tick will include several steps. These steps are enumerated below along with the hardware they will run on:
+            \begin{enumerate}[noitemsep]
+                \item Assign input values (CPU)
+                \item Apply excitatory postsynaptic potentials decay (GPU)
+                \item Feed-forward
+                \item Determine activations (GPU)
+                \item Pass output values to simulation (CPU)
+                \item Adjust connection weights (GPU)
+                \item Determine then kill dead neurons (GPU)
+                \item Create new neurons (CPU)
+                \item Do simulation tick (CPU)
+            \end{enumerate}
+
+            In this document, I will explain the implementation details specific to the NN. The game simulation details will be explained in another document. Each of the steps above will be explained further in its own section below.
+    \section{NN Architecture}
+    \section{Applying Excitatory Postsynaptic Potentials Decay}
+    \section{Feed-Forward}
+    \section{Determine Activations}
+    \section{Adjusting Connection Weights}
+    \section{Determining Then Killing Dead Neurons}
+    \section{Creating New Neurons}
+\end{document} % This is the end of the document
