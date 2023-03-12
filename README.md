@@ -1,1 +1,1 @@
-This project is detailed in the PDFs found in the ./documentation folder.
+This project is detailed in the PDFs found in the ./documents folder.
