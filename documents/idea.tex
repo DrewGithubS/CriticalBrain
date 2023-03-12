@@ -21,23 +21,26 @@
     
 
     \section{Idea} % creates a section
-    
-        \textbf{Goal} The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network with similar features to any other mammal's brain i.e:
         
-        \begin{itemize}[noitemsep]
-            \item The neural network will have a branching parameter of about 1.
-            \item Each neuron will have roughly \connectionCount connections.
-            \item Each neuron will have an activation threshold.
-            \item Neuron inhibitory and excitatory postsynaptic potentials will fade over time.
-        \end{itemize}
+        \subsection{Goal}
+            The goal of this project is to create a simulation of a brain in a state of criticality. I will be attempting to create a weak AGI. I plan to create a neural network (NN) with similar features to any other mammal's brain i.e:
+        
+            \begin{itemize}[noitemsep]
+                \item The NN will have a branching parameter of about 1.
+                \item Each neuron will have roughly \connectionCount{ }connections.
+                \item Each neuron will have an activation threshold.
+                \item Neuron inhibitory and excitatory postsynaptic potentials will fade over time.
+            \end{itemize}
 
-        I will attempt to teach the neural network simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
+            I will attempt to teach the NN simple tasks based around a simulated environment of an organism. My end goal is to create two machines running concurrently, one to simulate the environment, and one to simulate an organism living within the environment. The environment machine will provide inputs to the organism machine, and the organism machine will provide actions for the organism to take in the simulation.
 
-        \section{Design}
 
-        \textbf{Overview} The neural network will take the form of a directed graph. Each neuron will have about \connectionCount receiving and transmitting connections to other neurons.\newline
-
-        \textbf{Neurons} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+    \section{Design}
+        
+        \subsection{Overview}
+            The NN will take the form of a directed graph. Each neuron will have about \connectionCount{ }receiving and transmitting connections to other neurons.
+        
+        \subsection{Neurons} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
 
         \begin{enumerate}[noitemsep]
             \item Activation Threshold 
@@ -45,61 +48,134 @@
             \item Connections
         \end{enumerate}
 
-        The functions of each attribute will be described in the following sections.\newline
-
-        \textbf{Activation Threshold} Neurons will activate when the excitation of the neuron exceeds the activation threshold.\newline
-
-        \textbf{Location} The location of a neuron is used to determine which neurons the a newly created neuron can connect to. The location will have three components: x, y, and z. The neurons that the source neuron can connect to will be based on the distance between the source and the target.\newline
-
-        \textbf{Connections} Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
+        The functions of each attribute will be described in the following sections.
+        
+        \subsection{Activation Threshold}
+            Neurons will activate when the excitation of the neuron exceeds the activation threshold.
+        
+        \subsection{Location}
+            The location of a neuron is used to determine which neurons the a newly created neuron can connect to. The location will have three components: x, y, and z. The neurons that the source neuron can connect to will be based on the distance between the source and the target.
+        
+        \subsection{Connections}
+            Connections are the equivalent of synapses in the brain. Each connection has several attributes listed below: 
 
         \begin{enumerate}[noitemsep]
             \item Source neuron
             \item Target neuron 
             \item Weight
         \end{enumerate}
-        The functions of each attribute will be described in the following sections.\newline
-
-        \textbf{Transmitting} Upon activation, a neuron will send an activation to each of its forward connections with a signal strength based on the weight assigned to that connection. The signal strength will also be affected by the current simulation state (i.e. dehydration may cause weakened signals).\newline
-
-        \textbf{Receiving} Upon reception of a signal from a connection, a neuron will add the to its level of exicitation.\newline
+        The functions of each attribute will be described in the following sections.
+        
+        \subsection{Transmitting} Upon activation, a neuron will send an activation to each of its forward connections with a signal strength based on the weight assigned to that connection. The signal strength will also be affected by the current simulation state (i.e. dehydration may cause weakened signals).
+        
+        \subsection{Receiving} Upon reception of a signal from a connection, a neuron will add the to its level of exicitation.\newline
 
 
     \section{Neuroplasticity}
-
-        \textbf{Connection Strengthening} Connections will increase the magnitude of their connection strength according to the relative firing rate of the target neuron compared to the firing rate of the other target neurons from the same source neuron. Connections will 'share' from a maximum signal strength from the source node.\newline
-        Given a set of connections to target neurons from a source neuron, the strength of each connection will be calculated according to the following equation:\newline
-        \begin{center}
-        \begin{math}
-            C_{if} = C_{i0} + \Delta C_{i}\newline
-            \Delta C_i = k * \frac{F_n - \frac{1}{N}}{\sum_{n=0}^{N} (F_n)}\newline\newline
-        \end{math}
-        \end{center}
-            $C_{if} = $ Final value of i-th connection weight\newline
-            $C_{i0} = $ Initial value of i-th connection weight\newline
-            $\Delta C_{i} = $ The change in the i-th connection weight\newline
-            $F_{i} = $ The firing rate of the i-th neuron\newline
-            $N = $ The amount of outgoing connections to the source neuron\newline
-
-        The maximum signal strength will be determined by averaging the all of the source neuron's target neuron's activation thresholds.
         
-        \textbf{Connection Death} A connection will die when the target neuron dies.\newline
+        \subsection{Connection Strengthening}
+            Connections will increase the magnitude of their connection strength according to the relative firing rate of the target neuron compared to the firing rate of the other target neurons from the same source neuron. Connections will 'share' from a maximum signal strength from the source node.\newline
+            Given a set of connections to target neurons from a source neuron, the strength of each connection will be calculated according to the following equation:\newline
+            \begin{center}
+            \begin{math}
+                C_{if} = C_{i0} + \Delta C_{i}\newline
+                \Delta C_i = k * \frac{F_n - \frac{1}{N}}{\sum_{n=0}^{N} (F_n)}\newline\newline
+            \end{math}
+            \end{center}
+                $C_{if} = $ Final value of i-th connection weight\newline
+                $C_{i0} = $ Initial value of i-th connection weight\newline
+                $\Delta C_{i} = $ The change in the i-th connection weight\newline
+                $F_{i} = $ The firing rate of the i-th neuron\newline
+                $N = $ The amount of outgoing connections to the source neuron\newline
 
-        \textbf{Neuron Death} A source neuron death will occur when the firing rate of the source neuron becomes lower than a constant threshold. A source neuron can also die if the average magnitude of its connections is below a constant threshold.\newline
-
-        \textbf{Neuron Creation} Upon a neurons death, a new neuron will appear with new incoming and outgoing connections. Outgoing neurons will be created by searching for neurons within a constant distance according to each neuron's location.
-
+            The maximum signal strength will be determined by averaging the all of the source neuron's target neuron's activation thresholds.
+        
+        \subsection{Connection Death}
+            A connection will die when the target neuron dies.
+        
+        \subsection{Neuron Death}
+            A source neuron death will occur when the firing rate of the source neuron becomes lower than a constant threshold. A source neuron can also die if the average magnitude of its connections is below a constant threshold.
+        
+        \subsection{Neuron Creation}
+            Upon a neurons death, a new neuron will appear with new incoming and outgoing connections. Outgoing neurons will be created by searching for neurons within a constant distance according to each neuron's location.
     
+
     \section{Input/Output}
+        
+        \subsection{Input}
+            Input neurons will be special neurons that do not have any input connections. The values of the input neurons will be set by the organism simulator based on the simulation's state. Input neurons will not be affected by death and cannot be created. Forward connections that use an input neuron as a source, however, can die.
+        
+        \subsection{Output}
+            Output neurons will be special neurons that do not have any output connections. The activation of output neurons affect the organism's actions within the simulation. These actions will affect the simulation's state. Output neurons will not (currently) be affected by death and cannot be created (currently). TBD: How will input neurons to the output neurons get refreshed (killed and re-created).
 
-        \textbf{Input} Input neurons will be special neurons that do not have any input connections. The values of the input neurons will be set by the organism simulator based on the simulation's state. Input neurons will not be affected by death and cannot be created. Forward connections that use an input neuron as a source, however, can die.
-
-        \textbf{Output} Output neurons will be special neurons that do not have any output connections. The activation of output neurons affect the organism's actions within the simulation. These actions will affect the simulation's state. Output neurons will not (currently) be affected by death and cannot be created (currently). TBD: How will input neurons to the output neurons get refreshed (killed and re-created).
 
     \section{Motivating Intelligence}
-
-        \textbf{Self-Preservation} Self-preservation will be indirectly inherent to the rules of neuron survival. Neurons will get killed and replaced if they become inactive. If neurons are over-active, it will negatively affect the organism in the simulation and, in the long-term, negatively affect the individual neurons.\newline
-
         
+        \subsection{Self-Preservation}
+            Self-preservation will be indirectly inherent to the rules of neuron survival. Neurons will get killed and replaced if they become inactive. If neurons are over-active, it will negatively affect the organism in the simulation and, in the long-term, negatively affect the individual neurons. Since active neurons are reinforced by their source neurons, active neurons will live longer than inactive neurons. Newly created neurons will compete with established neurons. Though indirect, active neurons will have more 'drive' to survive.
+        
+        \subsection{Comparing To Other NNs}
+            In contrast to other common NNs, this NN does not directly change weights or biases to achieve a target output. This NN, instead, uses each neuron's self-preservation to attempt to achieve artificial general intelligence.
+
+
+    \section{The Game}
+        
+        \subsection{Objective}
+            The objective of the game is to survive as long as possible.
+        
+        \subsection{Situation}
+            The organism exists in a 2D space with food and water spread throughout the space.
+        
+        \subsection{Organism}
+            The organism will have four legs, each with a defined extended length, a defined angle, and a grip. The legs will extend and can be used to grab the ground to maneuver around the space.
+
+            \textbf{Leg Length}
+                The length of the legs will be bounded. The organism can extend and contract the legs to their minimum and maximum lengths.
+
+            \textbf{Leg Angle}
+                The angle of the legs will be bounded. The organism can rotate the legs to their minimum and maximum angles.
+
+            \textbf{Grip}
+                The grip will be how much the legs are 'gripping' the ground. When the grip is at its max level, it leg will remain planted and the organism can contract its leg to move it's body.
+
+            The organism will automatically eat food when it is within a defined distance to the food in its 2D space.
+        
+        \subsection{Organism Inputs}
+            The organism will receive the following inputs:
+            \begin{enumerate}[noitemsep]
+                \item 360 degrees of sight
+                \item Current leg positions
+                \item Current hunger
+                \item Current thirst
+            \end{enumerate}
+
+            \textbf{360 Degree Sight}
+                The organism will be able to 'see' by knowing exactly what is in sight at different angles. Its sight will also contain the distance of the item and what the item is (i.e. wall, water, food).
+
+            \textbf{Current Leg Postitions}
+                The current leg extensions, angles, and grips.
+
+            \textbf{Current Hunger}
+                The organisms need for food.
+
+            \textbf{Current Thirst}
+                The organisms need for water.
+
+        \subsection{Organism Outputs}
+            The organism will output the following outputs:
+            \begin{enumerate}[noitemsep]
+                \item Extend/Contract Legs
+                \item Rotate Legs
+                \item Grip/Ungrip legs
+            \end{enumerate}
+
+            \textbf{Extend/Contract Legs}
+                Allows the organism to control its leg extensions.
+
+            \textbf{Rotate Legs}
+                ALlows the organism to rotate its legs.
+                
+            \textbf{Grip/Ungrip legs}
+                Allows the organism to control its grip on the ground.
 
 \end{document} % This is the end of the document
