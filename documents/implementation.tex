@@ -22,7 +22,7 @@
             \begin{enumerate}[noitemsep]
                 \item Assign input values (CPU)
                 \item Apply excitatory postsynaptic potentials decay (GPU)
-                \item Feed-forward
+                \item Feed-forward (GPU)
                 \item Determine activations (GPU)
                 \item Pass output values to simulation (CPU)
                 \item Adjust connection weights (GPU)
@@ -33,10 +33,32 @@
 
             In this document, I will explain the implementation details specific to the NN. The game simulation details will be explained in another document. Each of the steps above will be explained further in its own section below.
     \section{NN Architecture}
+        \subsection{Neurons}
+            On the GPU, neurons will store their activation threshold, an array of connections, the current excitory level, and a true/false value for if the neuron has been activated on this tick. On the CPU neurons will store their location and a temporary array of connections used to kill neurons CPU-side. The array of connections will have a fixed size (Preferably a multiple of only 2).
+
+            Lastly, neurons will store an array of reception values. This is to eliminate race conditions during feed-forward. This will be elaborated further in the Neuron subsection in this section.
+        \subsection{Connections}
+            Each connection will have a source neuron (implicitly by its location in memory), a target neuron (explicitly), and an index in the array of its target neuron's reception array. Upon feed-forward, a kernel will be created with a thread for each connection in each neuron. This connection will take the activation of its source and multiply it by the connection's weight and update the target neuron's reception array.
     \section{Applying Excitatory Postsynaptic Potentials Decay}
+        \subsection{Kernel}
+            A kernel will be called with a thread for each neuron. Each neuron's excitory level will be decreased by a constant value.
     \section{Feed-Forward}
-    \section{Determine Activations}
+        \subsection{Kernel}
+            A kernel will be called with a thread for each connection. Each connection will update its target neuron's reception array with the source neuron's activation times the weight of the connection.
     \section{Adjusting Connection Weights}
+        \subsection{Kernel}
+            Connection weights will be updated based on the activations of the target neurons. The equation for neuron updates is in the idea.pdf.
+    \section{Determine Activations}
+        \subsection{Kernel}
+            A kernel will be called with a thread for each item in the reception array. A reduction algorithm will be implemented to sum all of the items in the reception array. The output of the reduction will be added to the neuron's previous excitory level. This final output will be the neuron's exitory level for the next tick.
+
+            Another kernel will be called with a thread for each neuron. If the neuron's excitory level exceeds the neuron's activation threshold, the neuron will activate.
     \section{Determining Then Killing Dead Neurons}
+        \subsection{Kernel}
+            Neurons will be considered dead if they have fired fewer than 10 times in the last 1000 ticks. A neuron is marked dead by the GPU.
     \section{Creating New Neurons}
+        \subsection{Kernel}
+            NA
+        \subsection{CPU}
+            The CPU will be responsible for creating new neurons. New neurons will be spawned in partitions within the simulated 3D brain space with fewer neurons than its maximum capacity. It will favor partitions with fewer neurons to encourage even growth. New neurons will select, at random, target and source connections. The weights of these connections will also be randomly generated. NOTE: it may be more efficient to call the adjusting connection weights kernel to balance the new connections.
 \end{document} % This is the end of the document
