@@ -121,7 +121,7 @@ void Animation::nextFrame(Organism * organism) {
 	float organismY = organism->getYPos();
 
 	for(int i = 0; i < LEGCOUNT; i++) {
-		float legAngle = organism->getLegAngle(i);
+		float legAngle = organism->getLegAngle(i); // TODO: Optimize this
 		float legX = organism->getLegX(i);
 		float legY = organism->getLegY(i);
 
