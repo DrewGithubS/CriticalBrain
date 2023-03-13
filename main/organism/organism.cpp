@@ -43,7 +43,7 @@ void Organism::pullLegX(int legNum, float pull) {
 	legPullX[legNum] = pull;
 }
 
-void Organism::pullLegX(int legNum, float pull) {
+void Organism::pullLegY(int legNum, float pull) {
 	legPullY[legNum] = pull;
 }
 
