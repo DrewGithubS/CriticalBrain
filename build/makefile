@@ -15,7 +15,7 @@ headers:
 
 .PHONY: check
 check: 
-	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" PATHTOBUILD="$(PATHTOBUILD)" check
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" PATHTOBUILD="$(PATHTOBUILD)" check)
 
 .PHONY: clean
 clean:

@@ -14,8 +14,20 @@ all_objects := $(wildcard $(PATHTOOBJS)/*.o)
 
 
 .PHONY: all
-all:
+all: $(objects) $(cu_objects)
 
 .PHONY: headers
 headers:
 	cp *.h $(PATHTOBUILD)/include
+
+
+.PHONY: check
+check:
+	echo Objects are $(objects)
+	echo Cu_Objects are $(cu_objects)
+
+$(objects): %.o: %.cpp *.h
+	$(GXX) -I $(PATHTOBUILD)/include -c $(CPP_OPTS) $< -o $(PATHTOBUILD)/objects/$@
+
+$(cu_objects): %.o: %.cu *.h
+	$(NVCC) -I $(PATHTOBUILD)/include -c $(CPP_OPTS) $< -o $(PATHTOBUILD)/objects/$@
