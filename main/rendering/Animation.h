@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+class Organism;
+
 class Animation {
 private:
 	uint32_t width;
@@ -24,7 +26,7 @@ private:
 public:
 	Animation(uint32_t widthIn, uint32_t heightIn);
 	void init();
-	void nextFrame();
+	void nextFrame(Organism * organism);
 	void exit();
 	void * getImage();
 };

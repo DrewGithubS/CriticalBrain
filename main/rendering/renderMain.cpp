@@ -1,10 +1,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../organism/organism.h"
+#include "organism.h"
 
 #include "Animation.h"
 #include "Renderer.h"
+#include "renderMain.h"
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -17,7 +18,7 @@ uint64_t getMicrosecondsPassed(struct timespec start, struct timespec end) {
 	return ((end.tv_sec - start.tv_sec) * MICROSECONDSPERSECOND) + ((end.tv_nsec - start.tv_nsec) / NANOSECONDSPERMICROSECOND);
 }
 
-void RenderMain::RenderMain(Organism * organismIn) {
+RenderMain::RenderMain(Organism * organismIn) {
 	renderer = new Renderer(WIDTH, HEIGHT);
 	animation = new Animation(WIDTH, HEIGHT);
 	organism = organismIn;
@@ -33,7 +34,7 @@ void RenderMain::render() {
 		// if(microsecondsPassed >= microsecondsPerFrame) {
 			renderer->checkForEvent();
 			// renderer->getFrame();
-			animation->nextFrame();
+			animation->nextFrame(organism);
 			renderer->setFrame(animation->getImage());
 			renderer->render();
 		// } else {

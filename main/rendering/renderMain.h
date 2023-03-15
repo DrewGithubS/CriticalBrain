@@ -10,5 +10,5 @@ private:
 	Organism * organism;
 public:
 	RenderMain(Organism * organismIn);
-	render();
-}
+	void render();
+};

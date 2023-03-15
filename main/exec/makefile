@@ -1,3 +1,5 @@
+Execs=main
+
 PATHTOBUILD ?= ""
 
 C_OPTS ?= -std=c99 -g -O2
@@ -26,8 +28,8 @@ check:
 	echo Objects are $(objects)
 	echo Cu_Objects are $(cu_objects)
 
-$(objects): %.o: %.cpp *.h
-	$(GXX) -I $(PATHTOBUILD)/include -c $(CPP_OPTS) $< -o $(PATHTOBUILD)/objects/$@
+$(objects): %.o: %.cpp $(objects)
+	$(NVCC) $< -I $(PATHTOBUILD)/include $(CPP_OPTS) $(PATHTOBUILD)/objects/* -o $(PATHTOBUILD)/exec/$@
 
-$(cu_objects): %.o: %.cu *.h
-	$(NVCC) -I $(PATHTOBUILD)/include -c $(CPP_OPTS) $< -o $(PATHTOBUILD)/objects/$@
+$(cu_objects): %.o: %.cu $(cu_objects)
+	$(NVCC) $< -I $(PATHTOBUILD)/include $(CPP_OPTS) $(PATHTOBUILD)/objects/* -o $(PATHTOBUILD)/exec/$@

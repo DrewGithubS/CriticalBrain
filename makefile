@@ -16,3 +16,11 @@ check:
 .PHONY: clean
 clean:
 	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" clean;)
+
+.PHONY: objects
+objects:
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" objects;)
+
+.PHONY: headers
+headers:
+	$(foreach subdir, $(subdirs), $(MAKE) -C $(subdir) OPTS="$(OPTS)" headers;)

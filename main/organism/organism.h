@@ -1,3 +1,5 @@
+#include <cstdint>
+
 class Organism {
 private:
 	float xPos;
@@ -16,6 +18,7 @@ private:
 	float legPullY[4];
 
 	float grip[4];
+	uint8_t uintGrip[4];
 public:
 	float getXPos();
 	float getYPos();
@@ -23,9 +26,10 @@ public:
 	float getLegX(int legNum);
 	float getLegY(int legNum);
 	float getGrip(int legNum);
+	uint8_t getGripUint(int legNum);
 
 	void adjustGrip(int legNum, float newGrip);
 	void pullLegX(int legNum, float pull);
 	void pullLegY(int legNum, float pull);
-	void simulationStep();
-}
+	void simulateStep();
+};

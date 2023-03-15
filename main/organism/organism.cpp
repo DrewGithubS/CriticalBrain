@@ -1,5 +1,8 @@
 #include "organism.h"
 
+#include <cstdint>
+#include <cmath>
+
 #define COEFICIENT_STATIC_FRICTION (0.75)
 #define COEFICIENT_FRICTION 	   (0.5)
 
@@ -11,6 +14,8 @@
 static const float legAngleMax[4] = {PI, PI / 2, 2 * PI, 3 * PI / 2};
 static const float legAngleMin[4] = {PI / 2, 0, 3 * PI / 2, PI};
 
+#define abs(x) (x < 0 ? -x : x)
+
 float Organism::getXPos() {
 	return xPos;
 }
@@ -20,19 +25,23 @@ float Organism::getYPos() {
 }
 
 float Organism::getLegX(int legNum) {
-	return legExtension[legNum] * cos(legAngle[legNum]) + xPos;
+	return legX[legNum];
 }
 
 float Organism::getLegY(int legNum) {
-	return legExtension[legNum] * sin(legAngle[legNum]) + yPos;
+	return legY[legNum];
 }
 
 float Organism::getLegAngle(int legNum) {
-	return arcsin((legX[legNum] - xPos) / (legY[legNum] - yPos));
+	return asin((legX[legNum] - xPos) / (legY[legNum] - yPos));
 }
 
 float Organism::getGrip(int legNum) {
 	return grip[legNum];
+}
+
+uint8_t Organism::getGripUint(int legNum) {
+	return uintGrip[legNum];
 }
 
 void Organism::adjustGrip(int legNum, float newGrip) {
@@ -60,23 +69,23 @@ void Organism::simulateStep() {
 		// Note: Idk how components of friction work.
 		if(legVelX[i] == 0) {
 			// Static friction case.
-			if(legPullX[i] * grip > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
-				legVelX += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
+			if(legPullX[i] * grip[i] > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
+				legVelX[i] += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
 			}
 			xVel -= (legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION);
 		} else {
-			legVelX += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
+			legVelX[i] += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
 			xVel -= (legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION);
 		}
 
 		if(legVelY[i] == 0) {
 			// Static friction case.
-			if(legPullY[i] * grip > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
-				legVelY += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
+			if(legPullY[i] * grip[i] > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
+				legVelY[i] += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
 			}
 			yVel -= (legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION);
 		} else {
-			legVelY += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
+			legVelY[i] += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
 			yVel -= (legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION);
 		}
 

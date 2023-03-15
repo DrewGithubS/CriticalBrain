@@ -4,22 +4,30 @@
 #include "Animation.h"
 #include "GPUFunctions.h"
 
-#include "../organism/organism.h"
+#include "organism.h"
 
 const uint32_t THREADSPERBLOCK = 1024;
 
 #define LEG_WIDTH (5)
 #define ORGANISM_RADIUS (10)
+#define LEG_COUNT (4)
+
+__device__ int32_t absoluteValue(int32_t a) {
+	return a < 0 ? -a : a;
+}
 
 __device__ uint32_t calcRectangleArea(
-	uint32_t Ax,
-	uint32_t Ay,
-	uint32_t Bx,
-	uint32_t By,
-	uint32_t Cx,
-	uint32_t Cy) {
+	int32_t Ax,
+	int32_t Ay,
+	int32_t Bx,
+	int32_t By,
+	int32_t Cx,
+	int32_t Cy) {
 
-	return abs( (Bx * Ay - Ax * By) +
+
+
+	return absoluteValue( 
+				(Bx * Ay - Ax * By) +
 				(Cx * By - Bx * Cy) +
 				(Ax * Cy - Cx * Ay));
 
@@ -100,9 +108,6 @@ __global__ void drawRectangle(
 Animation::Animation(uint32_t widthIn, uint32_t heightIn) {
 	width = widthIn;
 	height = heightIn;
-	data = dataIn;
-	imageWidth = imageWidthIn;
-	imageHeight = imageHeightIn;
 	init();
 }
 
@@ -120,7 +125,7 @@ void Animation::nextFrame(Organism * organism) {
 	float organismX = organism->getXPos();
 	float organismY = organism->getYPos();
 
-	for(int i = 0; i < LEGCOUNT; i++) {
+	for(int i = 0; i < LEG_COUNT; i++) {
 		float legAngle = organism->getLegAngle(i); // TODO: Optimize this
 		float legX = organism->getLegX(i);
 		float legY = organism->getLegY(i);
@@ -157,7 +162,7 @@ void Animation::nextFrame(Organism * organism) {
 		float legX4 = legX + LEG_WIDTH * dX;
 		float legY4 = legY - LEG_WIDTH * dY;
 
-		uint32_t gripStrength = organism->getGrip(i) << 8 | 0xFF000000;
+		uint32_t gripStrength = (((organism->getGripUint(i)) << 8) | 0xFF000000);
 
 		drawRectangle <<< blockCountGPU, THREADSPERBLOCK >>> (
 			d_image,
