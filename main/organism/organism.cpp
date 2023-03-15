@@ -1,5 +1,6 @@
 #include "organism.h"
 
+#include <cstdio>
 #include <cstdint>
 #include <cmath>
 
@@ -15,6 +16,96 @@ static const float legAngleMax[4] = {PI, PI / 2, 2 * PI, 3 * PI / 2};
 static const float legAngleMin[4] = {PI / 2, 0, 3 * PI / 2, PI};
 
 #define abs(x) (x < 0 ? -x : x)
+
+static float xOff[] = {-30, -30, 30, 30};
+static float yOff[] = {-30, 30, -30, 30};
+
+Organism::Organism() {
+	xPos = 0;
+	yPos = 0;
+	xVel = 0;
+	yVel = 0;
+	
+	for(int i = 0; i < 4; i++) {
+		legX[i] = xPos + xOff[i];
+		legY[i] = yPos + yOff[i];
+		legVelX[i] = 0;
+		legVelY[i] = 0;
+		grip[i] = 1;
+	}
+}
+
+Organism::Organism(float xIn, float yIn) {
+	xPos = xIn;
+	yPos = yIn;
+	xVel = 0;
+	yVel = 0;
+
+	for(int i = 0; i < 4; i++) {
+		legX[i] = xPos + xOff[i];
+		legY[i] = yPos + yOff[i];
+		legVelX[i] = 0;
+		legVelY[i] = 0;
+		grip[i] = 1;
+	}
+}
+
+Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn) {
+	xPos = xIn;
+	yPos = yIn;
+	xVel = xVelIn;
+	yVel = yVelIn;
+
+	for(int i = 0; i < 4; i++) {
+		legX[i] = xPos + xOff[i];
+		legY[i] = yPos + yOff[i];
+		legVelX[i] = 0;
+		legVelY[i] = 0;
+		grip[i] = 1;
+	}
+}
+
+Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn) {
+	xPos = xIn;
+	yPos = yIn;
+	xVel = xVelIn;
+	yVel = yVelIn;
+	for(int i = 0; i < 4; i++) {
+		legX[i] = legXIn[i];
+		legY[i] = legYIn[i];
+		legVelX[i] = 0;
+		legVelY[i] = 0;
+		grip[i] = 1;
+	}
+}
+
+Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn) {
+	xPos = xIn;
+	yPos = yIn;
+	xVel = xVelIn;
+	yVel = yVelIn;
+	for(int i = 0; i < 4; i++) {
+		legX[i] = legXIn[i];
+		legY[i] = legYIn[i];
+		legVelX[i] = legVelXIn[i];
+		legVelY[i] = legVelYIn[i];
+		grip[i] = 1;
+	}
+}
+
+Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn, float * gripIn) {
+	xPos = xIn;
+	yPos = yIn;
+	xVel = xVelIn;
+	yVel = yVelIn;
+	for(int i = 0; i < 4; i++) {
+		legX[i] = legXIn[i];
+		legY[i] = legYIn[i];
+		legVelX[i] = legVelXIn[i];
+		legVelY[i] = legVelYIn[i];
+		grip[i] = gripIn[i];
+	}
+}
 
 float Organism::getXPos() {
 	return xPos;
@@ -41,7 +132,7 @@ float Organism::getGrip(int legNum) {
 }
 
 uint8_t Organism::getGripUint(int legNum) {
-	return uintGrip[legNum];
+	return (uint8_t) (grip[legNum] * 255);
 }
 
 void Organism::adjustGrip(int legNum, float newGrip) {

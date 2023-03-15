@@ -8,9 +8,10 @@
 
 const uint32_t THREADSPERBLOCK = 1024;
 
-#define LEG_WIDTH (5)
+#define LEG_WIDTH (2)
 #define ORGANISM_RADIUS (10)
 #define LEG_COUNT (4)
+#define HAND_RADIUS (3)
 
 __device__ int32_t absoluteValue(int32_t a) {
 	return a < 0 ? -a : a;
@@ -130,18 +131,23 @@ void Animation::nextFrame(Organism * organism) {
 		float legX = organism->getLegX(i);
 		float legY = organism->getLegY(i);
 
-		float dX = sin(legAngle);
-		float dY = -cos(legAngle);
+		float dX = organismX - legX;
+		float dY = organismY - legY;
 
-		float legX1 = legX - LEG_WIDTH * dX;
-		float legY1 = legY - LEG_WIDTH * dY;
-		float legX2 = legX + LEG_WIDTH * dX;
-		float legY2 = legY + LEG_WIDTH * dY;
+		float normalizer = 1/sqrt(dX * dX + dY * dY);
+		float dTemp = dX;
+		dX = LEG_WIDTH * (-dY) * normalizer;
+		dY = LEG_WIDTH * dTemp * normalizer;
 
-		float orgX1 = organismX - LEG_WIDTH * dX;
-		float orgY1 = organismY - LEG_WIDTH * dY;
-		float orgX2 = organismX + LEG_WIDTH * dX;
-		float orgY2 = organismY + LEG_WIDTH * dY;
+		float legX1 = legX - dX;// * dX;
+		float legY1 = legY - dY;// * dY;
+		float legX2 = legX + dX;// * dX;
+		float legY2 = legY + dY;// * dY;
+
+		float orgX1 = organismX - dX;// * dX;
+		float orgY1 = organismY - dY;// * dY;
+		float orgX2 = organismX + dX;// * dX;
+		float orgY2 = organismY + dY;// * dY;
 
 		drawRectangle <<< blockCountGPU, THREADSPERBLOCK >>> (
 			d_image,
@@ -164,29 +170,24 @@ void Animation::nextFrame(Organism * organism) {
 
 		uint32_t gripStrength = (((organism->getGripUint(i)) << 8) | 0xFF000000);
 
-		drawRectangle <<< blockCountGPU, THREADSPERBLOCK >>> (
+		drawCircle <<< blockCountGPU, THREADSPERBLOCK >>> (
 			d_image,
 			width,
 			height,
-			legX1,
-			legY1,
-			legX2,
-			legY2,
-			legX3,
-			legY3,
-			legX4,
-			legY4,
+			legX,
+			legY,
+			HAND_RADIUS,
 			gripStrength);
 	}
 
 	drawCircle <<< blockCountGPU, THREADSPERBLOCK >>> (
-			d_image,
-			width,
-			height,
-			organismX,
-			organismY,
-			ORGANISM_RADIUS,
-			0xFF0000FF);
+		d_image,
+		width,
+		height,
+		organismX,
+		organismY,
+		ORGANISM_RADIUS,
+		0xFFFFFFFF);
 }
 
 void Animation::exit() {

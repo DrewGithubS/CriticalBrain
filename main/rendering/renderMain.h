@@ -1,4 +1,6 @@
 class Organism;
+class Animation;
+class Renderer;
 
 class RenderMain {
 private:

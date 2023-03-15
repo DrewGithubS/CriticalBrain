@@ -1,7 +1,10 @@
 #include "renderMain.h"
+#include "organism.h"
 
 int main() {
-	RenderMain render = RenderMain();
+	Organism organism = Organism(400, 400);
+
+	RenderMain render = RenderMain(&organism);
 
 	render.render();
 }

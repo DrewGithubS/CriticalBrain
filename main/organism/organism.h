@@ -18,8 +18,13 @@ private:
 	float legPullY[4];
 
 	float grip[4];
-	uint8_t uintGrip[4];
 public:
+	Organism();
+	Organism(float xIn, float yIn);
+	Organism(float xIn, float yIn, float xVelIn, float yVelIn);
+	Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn);
+	Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn);
+	Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn, float * grip);
 	float getXPos();
 	float getYPos();
 	float getLegAngle(int legNum);

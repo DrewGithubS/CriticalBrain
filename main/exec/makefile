@@ -9,10 +9,8 @@ CU_OPTS ?= -std=c++11 -g -lSDL2 -O2
 GXX=g++
 NVCC=nvcc
 
-objects := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
-cu_objects := $(patsubst %.cu,%.o,$(wildcard *.cu))
-
-all_objects := $(wildcard $(PATHTOOBJS)/*.o)
+objects := $(patsubst %.cpp,%,$(wildcard *.cpp))
+cu_objects := $(patsubst %.cu,%,$(wildcard *.cu))
 
 
 .PHONY: all
@@ -28,8 +26,8 @@ check:
 	echo Objects are $(objects)
 	echo Cu_Objects are $(cu_objects)
 
-$(objects): %.o: %.cpp $(objects)
+$(objects): %: %.cpp $(objects)
 	$(NVCC) $< -I $(PATHTOBUILD)/include $(CPP_OPTS) $(PATHTOBUILD)/objects/* -o $(PATHTOBUILD)/exec/$@
 
-$(cu_objects): %.o: %.cu $(cu_objects)
-	$(NVCC) $< -I $(PATHTOBUILD)/include $(CPP_OPTS) $(PATHTOBUILD)/objects/* -o $(PATHTOBUILD)/exec/$@
+$(cu_objects): %: %.cu $(cu_objects)
+	$(NVCC) $< -I $(PATHTOBUILD)/include $(CU_OPTS) $(PATHTOBUILD)/objects/* -o $(PATHTOBUILD)/exec/$@
