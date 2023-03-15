@@ -2,8 +2,9 @@ OPTS ?= -std=c99 -g -O2
 
 objects := $(sort $(wildcard *.tex))
 
-.PHONY: all
-all: $(objects)
+.PHONY: documents
+documents: $(objects)
+	echo MAKING
 	$(foreach object, $(objects), pdflatex $(object);)
 
 .PHONY: check
