@@ -1,5 +1,6 @@
 #include <cstdint>
 
+#include "NeuralNetCUDA.h"
 #include "GPUFunctions.h"
 #include "NeuralNet.h"
 
@@ -34,8 +35,13 @@ NeuralNet::NeuralNet(int partitionsIn, int neuronsPerPartitionIn, int maxConnect
 
 	d_backwardConnections = (uint32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
 	d_forwardConnections = (uint32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
+	d_forwardConnectionWeights = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
 	d_activationThreshold = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
 	d_receivingSignal = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
 	d_excitationLevel = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
 	d_neuronActivationCount = (uint16_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(uint16_t));
+}
+
+void NeuralNet::randomize() {
+	
 }
