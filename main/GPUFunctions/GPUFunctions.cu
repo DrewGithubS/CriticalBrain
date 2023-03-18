@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include "GPUFunctions.h"
+
 void * gpuMemAlloc(uint32_t bytes) {
 	void * output;
 	cudaError_t err = cudaMalloc(&output, bytes);

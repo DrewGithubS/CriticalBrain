@@ -1,41 +1,89 @@
 #include <cstdint>
 
+#include "NeuralNetCUDA.h"
 #include "GPUFunctions.h"
 #include "NeuralNet.h"
 
-NeuralNet::NeuralNet(int partitionsIn, int neuronsPerPartitionIn, int maxConnectionsPerNeuronIn) {
+NeuralNet::NeuralNet(int partitionsIn,
+					 int neuronsPerPartitionIn,
+					 int maxConnectionsPerNeuronIn,
+					 int feedsBeforeRebalanceIn,
+					 int rebalancesBeforeKillingIn) {
+
 	partitions = partitionsIn;
 	neuronsPerPartition = neuronsPerPartitionIn;
 	maxConnectionsPerNeuron = maxConnectionsPerNeuronIn;
+	partitionCount = partitions * partitions * partitions;
+	feedsBeforeRebalance = feedsBeforeRebalanceIn;
+	feedforwardCount = 0;
+	rebalancesBeforeKilling = rebalancesBeforeKillingIn;
 
-	// x
-	cpuNeurons = (CPUNeuron ****) malloc(partitions * sizeof(CPUNeuron ***));
-	for(int i = 0; i < partitions; i++) {
-		// y
-		cpuNeurons[i] = (CPUNeuron ***) malloc(partitions * sizeof(CPUNeuron **));
-		for(int j = 0; j < partitions; j++) {
-			// z
-			cpuNeurons[i][j] = (CPUNeuron **) malloc(partitions * sizeof(CPUNeuron *));
-			for(int k = 0; k < partitions; k++) {
-				// neuron
-				cpuNeurons[i][j][k] = (CPUNeuron *) malloc(neuronsPerPartition * sizeof(CPUNeuron));
-			}
-		}
-	}
+	// Used for random number generation on the GPU
+	d_randState = (curandState *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(curandState));
 
-	int partitionCount = partitions * partitions * partitions;
+	// If the value is -1, the neuron is dead.
+	// Used to indicate with partition a neuron is in.
+	d_partitionLoc = (int16_t *) gpuMemAlloc(partitionCount * sizeof(uint16_t));
 
-	backwardConnections = (uint32_t *) malloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
-	forwardConnections = (uint32_t *) malloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
-	activationThreshold = (float *) malloc(partitionCount * neuronsPerPartition * sizeof(float));
-	receivingSignal = (float *) malloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
-	excitationLevel = (float *) malloc(partitionCount * neuronsPerPartition * sizeof(float));
-	neuronActivationCount = (uint16_t *) malloc(partitionCount * neuronsPerPartition * sizeof(uint16_t));
+	// List of indices to postsynaptic neurons.
+	d_forwardConnections = (int32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
 
-	d_backwardConnections = (uint32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
-	d_forwardConnections = (uint32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
-	d_activationThreshold = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
+	// Weights to use during feedforward.
+	d_forwardConnectionWeights = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
+
+	// Activation threshold for each neuron.
+	d_activationThresholds = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
+
+	// Receiving placeholders to get rid of race conditions. Each neuron is responsible for summing these.
 	d_receivingSignal = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
+
+	// Current exitation level, when this exceeds the threshold, an activation occurs.
 	d_excitationLevel = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
-	d_neuronActivationCount = (uint16_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(uint16_t));
+
+	// Incremented each time a neuron fires. Used to kill unused neurons.
+	d_neuronActivationCountRebalance = (uint16_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(uint16_t));
+	d_neuronActivationCountKilling = (uint16_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(uint16_t));
+}
+
+void NeuralNet::randomize() {
+	randomizeNeurons(d_randState,
+					 d_activationThresholds,
+					 d_partitionLoc,
+					 0.7,
+					 1.4,
+					 partitionCount,
+					 neuronsPerPartition);
+
+	createRandomConnections(d_randState,
+							d_partitionLoc,
+							d_forwardConnections,
+							d_forwardConnectionWeights,
+							partitionCount,
+							neuronsPerPartition,
+							maxConnectionsPerNeuron);
+
+	// ensureUniqueConnections();
+}
+
+void NeuralNet::feedforward() {
+	// zeroizeReceivers();
+	// mainFeedforward();
+	// doNeuronReduction();
+	// calculateActivations();
+	// doExcitationDecay();
+	// feedforwardCount++;
+
+	// if(feedforwardCount == feedsBeforeRebalance && rebalanceCount == rebalancesBeforeKilling) {
+	// 	determineKilledNeurons();
+	// 	randomizeDeadNeurons();
+	// 	ensureUniqueConnections();
+	// 	zeroizeActivationCounts(d_neuronActivationCountKilling);
+	// 	feedforwardCount = 0;
+	// 	rebalanceCount = 0;
+	// } else if(feedforwardCount == feedsBeforeRebalance) {
+	//  rebalanceConnections();
+	// 	zeroizeActivationCounts(d_neuronActivationCountRebalance);
+	// 	rebalanceCount++;
+	// 	feedforwardCount = 0;
+	// }
 }
