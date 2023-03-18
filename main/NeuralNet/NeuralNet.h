@@ -1,36 +1,43 @@
+#ifndef NEURALNET_H
+#define NEURALNET_H
+
+#include <curand.h>
+#include <curand_kernel.h>
+
 #include <cstdint>
 #include <cstdio>
-
-struct CPUNeuron {
-	float x;
-	float y;
-	float z;
-	uint32_t indexInGPU;
-};
 
 class NeuralNet {
 private:
 	int partitions;
+	int partitionCount;
 	int neuronsPerPartition;
 	int maxConnectionsPerNeuron;
-	uint32_t * backwardConnections;
-	uint32_t * forwardConnections;
-	float * activationThreshold;
-	float * receivingSignal;
-	float * excitationLevel;
-	uint16_t * neuronActivationCount;
+	int feedforwardCount;
+	int feedsBeforeRebalance;
+	int rebalanceCount;
+	int rebalancesBeforeKilling;
 
-
-	uint32_t * d_backwardConnections;
-	uint32_t * d_forwardConnections;
+	curandState * d_randState;
+	int16_t * d_partitionLoc;
+	int32_t * d_forwardConnections;
 	float * d_forwardConnectionWeights;
-	float * d_activationThreshold;
+	float * d_activationThresholds;
 	float * d_receivingSignal;
 	float * d_excitationLevel;
-	uint16_t * d_neuronActivationCount;
+	uint16_t * d_neuronActivationCountRebalance;
+	uint16_t * d_neuronActivationCountKilling;
 public:
-	NeuralNet(int partitions, int neuronsPerPartition, int maxConnectionsPerNeuron);
+	NeuralNet(int partitions,
+			  int neuronsPerPartition,
+			  int maxConnectionsPerNeuron,
+			  int feedsBeforeRebalanceIn,
+			  int rebalancesBeforeKillingIn);
+
 	void randomize();
+	void feedforward();
 	void saveToFile(FILE * file);
 	void loadFromFile(FILE * file);
 };
+
+#endif

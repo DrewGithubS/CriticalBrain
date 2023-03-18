@@ -1,3 +1,5 @@
+$(VERBOSE).SILENT:
+
 OPTS ?= -std=c99 -g -O2
 PATHTOBUILD ?= ""
 

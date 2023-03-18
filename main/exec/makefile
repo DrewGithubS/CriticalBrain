@@ -1,3 +1,5 @@
+$(VERBOSE).SILENT:
+
 Execs=main
 
 PATHTOBUILD ?= ""
