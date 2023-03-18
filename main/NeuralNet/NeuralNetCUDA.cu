@@ -1,4 +1,4 @@
-__global__ void setup_kernel(curandState *state, int neurons) {
+__global__ void setupRand(curandState *state, int neurons) {
 
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 	
@@ -7,20 +7,16 @@ __global__ void setup_kernel(curandState *state, int neurons) {
 	}
 }
 
-__global__ void generate_kernel(curandState *my_curandstate, const unsigned int n, const unsigned *max_rand_int, const unsigned *min_rand_int,  unsigned int *result){
+__global__ void randomizeNeurons(curandState *my_curandstate, float minValue, float maxValue, int partitions, int neurons){
 
 	int idx = threadIdx.x + blockDim.x*blockIdx.x;
 
 	int count = 0;
 	while (count < n){
 		float myrandf = curand_uniform(my_curandstate+idx);
-		myrandf *= (max_rand_int[idx] - min_rand_int[idx]+0.999999);
-		myrandf += min_rand_int[idx];
-		int myrand = (int)truncf(myrandf);
+		myrandf *= (maxValue - minValue+0.999999);
+		myrandf += minValue;
 
-		assert(myrand <= max_rand_int[idx]);
-		assert(myrand >= min_rand_int[idx]);
 		result[myrand-min_rand_int[idx]]++;
-		count++;
 	}
 }
