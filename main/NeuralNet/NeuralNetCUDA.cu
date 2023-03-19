@@ -1,3 +1,8 @@
+// NOTE: Positive activations for good things and negative for bad things.
+// The goal of the neural net should be to maximize perception.
+
+
+
 #include <cstdint>
 
 #include "NeuralNetCUDA.h"
