@@ -6,18 +6,19 @@
 
 void randomizeNeurons(curandState * curandStates,
 					  float * activationThresholds,
-					  int16_t * partitionLocs,
 					  float minValue,
 					  float maxValue,
 					  int16_t partitions,
 					  int neuronsPerPartition);
 
 void createRandomConnections(curandState * curandStates,
-							 int16_t * partitionLocs,
+							 float minWeight,
+							 float maxWeight,
 							 int32_t * forwardConnections,
-							 float * forwardConnectionWeights,
+							 float * connectionWeights,
+							 int partitions,
 							 int partitionCount,
 							 int neuronsPerPartition,
-							 int maxConnectionsPerNeuron);
+							 int connectionsPerNeuron);
 
 #endif

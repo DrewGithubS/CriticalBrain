@@ -21,10 +21,6 @@ NeuralNet::NeuralNet(int partitionsIn,
 	// Used for random number generation on the GPU
 	d_randState = (curandState *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(curandState));
 
-	// If the value is -1, the neuron is dead.
-	// Used to indicate with partition a neuron is in.
-	d_partitionLoc = (int16_t *) gpuMemAlloc(partitionCount * sizeof(uint16_t));
-
 	// List of indices to postsynaptic neurons.
 	d_forwardConnections = (int32_t *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(uint32_t));
 
@@ -38,6 +34,7 @@ NeuralNet::NeuralNet(int partitionsIn,
 	d_receivingSignal = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * maxConnectionsPerNeuron * sizeof(float));
 
 	// Current exitation level, when this exceeds the threshold, an activation occurs.
+	// This value is set to -1 when the neuron is going to be killed.
 	d_excitationLevel = (float *) gpuMemAlloc(partitionCount * neuronsPerPartition * sizeof(float));
 
 	// Incremented each time a neuron fires. Used to kill unused neurons.
@@ -48,29 +45,33 @@ NeuralNet::NeuralNet(int partitionsIn,
 void NeuralNet::randomize() {
 	randomizeNeurons(d_randState,
 					 d_activationThresholds,
-					 d_partitionLoc,
 					 0.7,
 					 1.4,
 					 partitionCount,
 					 neuronsPerPartition);
 
 	createRandomConnections(d_randState,
-							d_partitionLoc,
+							0,
+							1,
 							d_forwardConnections,
 							d_forwardConnectionWeights,
+							partitions,
 							partitionCount,
 							neuronsPerPartition,
 							maxConnectionsPerNeuron);
 
 	// ensureUniqueConnections();
+
+	normalizeConnections();
+
 }
 
 void NeuralNet::feedforward() {
 	// zeroizeReceivers();
 	// mainFeedforward();
 	// doNeuronReduction();
-	// calculateActivations();
 	// doExcitationDecay();
+	// calculateActivations();
 	// feedforwardCount++;
 
 	// if(feedforwardCount == feedsBeforeRebalance && rebalanceCount == rebalancesBeforeKilling) {
@@ -82,6 +83,7 @@ void NeuralNet::feedforward() {
 	// 	rebalanceCount = 0;
 	// } else if(feedforwardCount == feedsBeforeRebalance) {
 	//  rebalanceConnections();
+	// 	normalizeConnections();
 	// 	zeroizeActivationCounts(d_neuronActivationCountRebalance);
 	// 	rebalanceCount++;
 	// 	feedforwardCount = 0;

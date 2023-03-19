@@ -19,7 +19,6 @@ private:
 	int rebalancesBeforeKilling;
 
 	curandState * d_randState;
-	int16_t * d_partitionLoc;
 	int32_t * d_forwardConnections;
 	float * d_forwardConnectionWeights;
 	float * d_activationThresholds;

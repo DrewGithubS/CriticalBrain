@@ -18,7 +18,6 @@ __global__ void d_setupRand(curandState *state,
 
 __global__ void d_randomizeNeurons(curandState * curandStates,
 								   float * activationThresholds,
-								   int16_t * partitionLocs,
 								   float minValue,
 								   float maxValue,
 								   int partitions,
@@ -30,7 +29,6 @@ __global__ void d_randomizeNeurons(curandState * curandStates,
 		activationThresholds[index] = curand_uniform(curandStates + index);
 		activationThresholds[index] *= (maxValue - minValue + 0.999999);
 		activationThresholds[index] += minValue;
-		partitionLocs[index] = index/partitions;
 	}
 }
 
@@ -57,7 +55,7 @@ __global__ void d_createRandomConnections(curandState * curandStates,
 										  float minWeight,
 										  float maxWeight,
 										  int32_t * forwardConnections,
-										  int32_t * connectionsWeights,
+										  float * connectionWeights,
 								   		  int partitions,
 								   		  int neuronsPerPartition,
 								   		  int neuronCount,
@@ -67,6 +65,8 @@ __global__ void d_createRandomConnections(curandState * curandStates,
 	int index = threadIdx.x + blockDim.x*blockIdx.x;
 
 	if(index < connectionCount) {
+		int weightIndex = index % connectionsPerNeuron;
+
 		int neuronIndex = index / connectionsPerNeuron;
 		int partitionIndex = neuronIndex / neuronsPerPartition;
 		int partitionX = (partitionIndex % partitions); 
@@ -80,8 +80,6 @@ __global__ void d_createRandomConnections(curandState * curandStates,
 		float maxValueX = partitionX == (partitions - 1) ? 0 : 1;
 		float maxValueY = partitionY == (partitions - 1) ? 0 : 1;
 		float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
-
-		
 
 		float x_f = curand_uniform(curandStates + index);
 	    x_f *= (maxValueX - minValueX + 0.999999);
@@ -106,12 +104,14 @@ __global__ void d_createRandomConnections(curandState * curandStates,
         neuronPartitionIndex *= neuronsPerPartition;
 
 		int newNeuronIndex;
-		do {
-			float z_f = curand_uniform(curandStates + index);
-		    z_f *= (neuronsPerPartition - 0 + 0.999999);
-		    z_f += 0;
-		    newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
-		} while(newNeuronIndex == neuronIndex);
+		float z_f = curand_uniform(curandStates + index);
+		// Subtracting one here so that I can guarantee this connection
+		// Doesn't point at itself
+	    z_f *= (neuronsPerPartition - 1 + 0.999999);
+	    z_f += 0;
+	    newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
+	    // Guarantees the connection isn't pointing at itself.
+	    newNeuronIndex += (newNeuronIndex >= neuronIndex);
 
 		forwardConnections[index] = neuronIndex;
 
@@ -119,13 +119,12 @@ __global__ void d_createRandomConnections(curandState * curandStates,
 	    weight *= (maxWeight - minWeight + 0.999999);
 	    weight += minWeight;
 		
-	    connectionsWeights[index] = weight;
+	    connectionWeights[index] = weight;
 	}
 }
 
 void randomizeNeurons(curandState * curandStates,
 					  float * activationThresholds,
-					  int16_t * partitionLocs,
 					  float minValue,
 					  float maxValue,
 					  int16_t partitions,
@@ -140,7 +139,6 @@ void randomizeNeurons(curandState * curandStates,
 	d_randomizeNeurons <<< BlockCount(neurons), THREADSPERBLOCK >>> (
 		curandStates,
 		activationThresholds,
-		partitionLocs,
 		minValue,
 		maxValue,
 		partitions,
@@ -151,27 +149,26 @@ void createRandomConnections(curandState * curandStates,
 							 float minWeight,
 							 float maxWeight,
 							 int32_t * forwardConnections,
-							 int32_t * connectionsWeights,
+							 float * connectionWeights,
 							 int partitions,
+							 int partitionCount,
 							 int neuronsPerPartition,
-							 int neuronCount,
-							 int connectionsPerNeuron,
-							 int connectionCount) {
+							 int connectionsPerNeuron) {
 
 	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * maxConnectionsPerNeuron;
+	int connections = neurons * connectionsPerNeuron;
 
 	d_createRandomConnections <<< 
 								  BlockCount(connections),
 								  THREADSPERBLOCK >>> (
-		curandStates,
-		minWeight,
-		maxWeight,
-		forwardConnections,
-		connectionsWeights,
-		partitions,
-		neuronsPerPartition,
-		neuronCount,
-		connectionsPerNeuron,
-		connectionCount);
+			curandStates,
+			minWeight,
+			maxWeight,
+			forwardConnections,
+			connectionWeights,
+			partitions,
+			neuronsPerPartition,
+			neurons,
+			connectionsPerNeuron,
+			connections);
 }
