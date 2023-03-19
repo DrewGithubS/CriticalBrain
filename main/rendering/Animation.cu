@@ -13,6 +13,8 @@ const uint32_t THREADSPERBLOCK = 1024;
 #define LEG_COUNT (4)
 #define HAND_RADIUS (3)
 
+#define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
+
 __device__ int32_t absoluteValue(int32_t a) {
 	return a < 0 ? -a : a;
 }
@@ -84,13 +86,17 @@ __global__ void drawRectangle(
 		uint32_t pixelX = index % imageWidth;
 		uint32_t pixelY = index / imageWidth;
 
-		// Somehow summing the area of these four triangles can determine if a pixel is in the rectangle. 
-		// If the area of these four triangles is less than the area of the rectangle, the point is in 
-		// the rectangle.
-		uint32_t trianglesA = calcRectangleArea(Ax, Ay, pixelX, pixelY, Dx, Dy);
-				trianglesA += calcRectangleArea(Dx, Dy, pixelX, pixelY, Cx, Cy);
-				trianglesA += calcRectangleArea(Cx, Cy, pixelX, pixelY, Bx, By);
-				trianglesA += calcRectangleArea(pixelX, pixelY, Bx, By, Ax, Ay);
+		// Somehow summing the area of these four triangles can determine if a
+		// pixel is in the rectangle. If the area of these four triangles is
+		// less than the area of the rectangle, the point is in the rectangle.
+		uint32_t trianglesA = 
+					calcRectangleArea(Ax, Ay, pixelX, pixelY, Dx, Dy);
+				trianglesA +=
+					calcRectangleArea(Dx, Dy, pixelX, pixelY, Cx, Cy);
+				trianglesA +=
+					calcRectangleArea(Cx, Cy, pixelX, pixelY, Bx, By);
+				trianglesA +=
+					calcRectangleArea(pixelX, pixelY, Bx, By, Ax, Ay);
 
 		// To get the area of the triangle instead of the rectangle,
 		// Divide by 2.
@@ -116,13 +122,11 @@ void Animation::init() {
 	imageSize = width * height * sizeof(uint32_t);
 	image = (uint32_t *) malloc(imageSize);
 	d_image = (uint32_t *) gpuMemAlloc(imageSize);
-	blockCountGPU = (imageWidth * imageHeight + THREADSPERBLOCK - 1)/THREADSPERBLOCK;
+	blockCountGPU = BlockCount(imageWidth * imageHeight);
 }
 
 void Animation::nextFrame(Organism * organism) {
 	cudaMemset(d_image, 0x00000000, imageSize);
-	// nextFrameGPU <<< blockCountGPU, THREADSPERBLOCK >>> (particlePositionsX, particlePositionsY, particleVelocitiesX, particleVelocitiesY, particleCount, width, height, d_occupied, color);
-	// createRender <<< blockCountGPU, THREADSPERBLOCK >>> (d_image);
 	float organismX = organism->getXPos();
 	float organismY = organism->getYPos();
 
@@ -168,7 +172,8 @@ void Animation::nextFrame(Organism * organism) {
 		float legX4 = legX + LEG_WIDTH * dX;
 		float legY4 = legY - LEG_WIDTH * dY;
 
-		uint32_t gripStrength = (((organism->getGripUint(i)) << 8) | 0xFF000000);
+		uint32_t gripStrength = 
+			(((organism->getGripUint(i)) << 8) | 0xFF000000);
 
 		drawCircle <<< blockCountGPU, THREADSPERBLOCK >>> (
 			d_image,

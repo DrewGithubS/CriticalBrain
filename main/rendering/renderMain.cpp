@@ -15,7 +15,8 @@ const uint32_t NANOSECONDSPERMICROSECOND = 1000;
 uint32_t microsecondsPerFrame = MICROSECONDSPERSECOND / FRAMESPERSECOND;
 
 uint64_t getMicrosecondsPassed(struct timespec start, struct timespec end) {
-	return ((end.tv_sec - start.tv_sec) * MICROSECONDSPERSECOND) + ((end.tv_nsec - start.tv_nsec) / NANOSECONDSPERMICROSECOND);
+	return ((end.tv_sec - start.tv_sec) * MICROSECONDSPERSECOND) +
+				((end.tv_nsec - start.tv_nsec) / NANOSECONDSPERMICROSECOND);
 }
 
 RenderMain::RenderMain(Organism * organismIn) {

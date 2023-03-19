@@ -41,7 +41,8 @@ bool Renderer::init() {
 
 	pTexture = SDL_CreateTexture(pRenderer,
 									SDL_PIXELFORMAT_ARGB8888,
-									SDL_TEXTUREACCESS_STREAMING | SDL_TEXTUREACCESS_TARGET,
+									SDL_TEXTUREACCESS_STREAMING |
+										SDL_TEXTUREACCESS_TARGET,
 									width, height);
 
 	if (pTexture== NULL) {

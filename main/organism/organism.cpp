@@ -35,7 +35,8 @@ Organism::Organism() {
 	}
 }
 
-Organism::Organism(float xIn, float yIn) {
+Organism::Organism(float xIn,
+				   float yIn) {
 	xPos = xIn;
 	yPos = yIn;
 	xVel = 0;
@@ -50,7 +51,10 @@ Organism::Organism(float xIn, float yIn) {
 	}
 }
 
-Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn) {
+Organism::Organism(float xIn,
+				   float yIn,
+				   float xVelIn,
+				   float yVelIn) {
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -65,7 +69,12 @@ Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn) {
 	}
 }
 
-Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn) {
+Organism::Organism(float xIn,
+				   float yIn,
+				   float xVelIn,
+				   float yVelIn,
+				   float * legXIn,
+				   float * legYIn) {
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -79,7 +88,14 @@ Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * leg
 	}
 }
 
-Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn) {
+Organism::Organism(float xIn,
+				   float yIn,
+				   float xVelIn,
+				   float yVelIn,
+				   float * legXIn,
+				   float * legYIn,
+				   float * legVelXIn,
+				   float * legVelYIn) {
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -93,7 +109,15 @@ Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * leg
 	}
 }
 
-Organism::Organism(float xIn, float yIn, float xVelIn, float yVelIn, float * legXIn, float * legYIn, float * legVelXIn, float * legVelYIn, float * gripIn) {
+Organism::Organism(float xIn,
+				   float yIn,
+				   float xVelIn,
+				   float yVelIn,
+				   float * legXIn,
+				   float * legYIn,
+				   float * legVelXIn,
+				   float * legVelYIn,
+				   float * gripIn) {
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -161,23 +185,31 @@ void Organism::simulateStep() {
 		if(legVelX[i] == 0) {
 			// Static friction case.
 			if(legPullX[i] * grip[i] > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
-				legVelX[i] += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
+				legVelX[i] += legPullX[i] * grip[i] -
+							  LEG_MASS * COEFICIENT_STATIC_FRICTION;
 			}
-			xVel -= (legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION);
+			xVel -= (legPullX[i] * grip[i] -
+					 LEG_MASS * COEFICIENT_STATIC_FRICTION);
 		} else {
-			legVelX[i] += legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
-			xVel -= (legPullX[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION);
+			legVelX[i] += legPullX[i] * grip[i] -
+						  LEG_MASS * COEFICIENT_FRICTION;
+			xVel -= (legPullX[i] * grip[i] -
+					 LEG_MASS * COEFICIENT_FRICTION);
 		}
 
 		if(legVelY[i] == 0) {
 			// Static friction case.
 			if(legPullY[i] * grip[i] > LEG_MASS * COEFICIENT_STATIC_FRICTION) {
-				legVelY[i] += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION;
+				legVelY[i] += legPullY[i] * grip[i] -
+							  LEG_MASS * COEFICIENT_STATIC_FRICTION;
 			}
-			yVel -= (legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_STATIC_FRICTION);
+			yVel -= (legPullY[i] * grip[i] -
+					 LEG_MASS * COEFICIENT_STATIC_FRICTION);
 		} else {
-			legVelY[i] += legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION;
-			yVel -= (legPullY[i] * grip[i] - LEG_MASS * COEFICIENT_FRICTION);
+			legVelY[i] += legPullY[i] * grip[i] -
+						  LEG_MASS * COEFICIENT_FRICTION;
+			yVel -= (legPullY[i] * grip[i] -
+					 LEG_MASS * COEFICIENT_FRICTION);
 		}
 
 		legVelX[i] *= 0.95;
