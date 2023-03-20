@@ -17,6 +17,16 @@ private:
 	int feedsBeforeRebalance;
 	int rebalanceCount;
 	int rebalancesBeforeKilling;
+	float decayRate;
+
+	int32_t * h_forwardConnections;
+	float * h_forwardConnectionWeights;
+	float * h_activationThresholds;
+	float * h_receivingSignal;
+	float * h_excitationLevel;
+	uint8_t * h_activations;
+	uint16_t * h_neuronActivationCountRebalance;
+	uint16_t * h_neuronActivationCountKilling;
 
 	curandState * d_randState;
 	int32_t * d_forwardConnections;
@@ -24,6 +34,7 @@ private:
 	float * d_activationThresholds;
 	float * d_receivingSignal;
 	float * d_excitationLevel;
+	uint8_t * d_activations;
 	uint16_t * d_neuronActivationCountRebalance;
 	uint16_t * d_neuronActivationCountKilling;
 public:

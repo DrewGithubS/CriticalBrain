@@ -21,4 +21,6 @@ void createRandomConnections(curandState * curandStates,
 							 int neuronsPerPartition,
 							 int connectionsPerNeuron);
 
+void normalizeConnections();
+
 #endif

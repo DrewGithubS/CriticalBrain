@@ -12,3 +12,11 @@ void * gpuMemAlloc(uint32_t bytes) {
 
 	return output;
 };
+
+void memcpyCPUtoGPU(void * to, void * from, size_t size) {
+	cudaMemcpy(to, from, size, cudaMemcpyHostToDevice);
+}
+
+void memcpyGPUtoCPU(void * to, void * from, size_t size) {
+	cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
+}
