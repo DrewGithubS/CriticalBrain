@@ -20,17 +20,20 @@ private:
 	float decayRate;
 
 	int32_t * h_forwardConnections;
-	float * h_forwardConnectionWeights;
+	int16_t * h_forwardConnectionsSub;
+	float * h_connectionWeights;
 	float * h_activationThresholds;
 	float * h_receivingSignal;
 	float * h_excitationLevel;
 	uint8_t * h_activations;
 	uint16_t * h_neuronActivationCountRebalance;
 	uint16_t * h_neuronActivationCountKilling;
+	int16_t * h_tempNeuronConnectionSub;
 
 	curandState * d_randState;
 	int32_t * d_forwardConnections;
-	float * d_forwardConnectionWeights;
+	int16_t * d_forwardConnectionsSub;
+	float * d_connectionWeights;
 	float * d_activationThresholds;
 	float * d_receivingSignal;
 	float * d_excitationLevel;

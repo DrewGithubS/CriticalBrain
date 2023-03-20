@@ -39,7 +39,7 @@ NeuralNet::NeuralNet(int partitionsIn,
 		sizeof(uint16_t));
 
 	// Weights to use during feedforward.
-	d_forwardConnectionWeights = (float *) gpuMemAlloc(
+	d_connectionWeights = (float *) gpuMemAlloc(
 		partitionCount *
 		neuronsPerPartition *
 		maxConnectionsPerNeuron *
@@ -100,7 +100,7 @@ NeuralNet::NeuralNet(int partitionsIn,
 		maxConnectionsPerNeuron *
 		sizeof(int16_t));
 
-	h_forwardConnectionWeights = (float *) gpuMemAlloc(
+	h_connectionWeights = (float *) gpuMemAlloc(
 		partitionCount *
 		neuronsPerPartition *
 		maxConnectionsPerNeuron *
@@ -156,7 +156,11 @@ void NeuralNet::randomize() {
 							0,
 							1,
 							d_forwardConnections,
-							d_forwardConnectionWeights,
+							d_forwardConnectionsSub,
+							h_forwardConnections,
+							h_forwardConnectionsSub,
+							h_tempNeuronConnectionSub,
+							d_connectionWeights,
 							partitions,
 							partitionCount,
 							neuronsPerPartition,
@@ -165,29 +169,30 @@ void NeuralNet::randomize() {
 	normalizeConnections(d_forwardConnections,
 						 d_connectionWeights,
 						 d_activationThresholds,
-						 neurons,
-						 connectionsPerNeuron,
+						 partitionCount * neuronsPerPartition,
+						 maxConnectionsPerNeuron,
 						 decayRate);
 }
 
 void NeuralNet::feedforward() {
 	zeroizeReceivers(d_receivingSignal,
-					 neurons,
-					 connectionsPerNeuron);
+					 partitionCount,
+					 neuronsPerPartition,
+					 maxConnectionsPerNeuron);
 
 	mainFeedforward(d_receivingSignal,
-					 activationd_activationss,
+					 d_activations,
 					 d_forwardConnections,
 					 d_forwardConnectionsSub,
 					 d_connectionWeights,
 					 partitionCount,
 					 neuronsPerPartition,
-					 connectionsPerNeuron);
+					 maxConnectionsPerNeuron);
 
 	doNeuronReduction(d_receivingSignal,
 					  partitionCount,
 					  neuronsPerPartition,
-					  connectionsPerNeuron);
+					  maxConnectionsPerNeuron);
 	// doExcitationDecay();
 	// calculateActivations();
 	// feedforwardCount++;

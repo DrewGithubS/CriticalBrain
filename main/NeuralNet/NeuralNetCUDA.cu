@@ -6,12 +6,17 @@
 #include <cstdint>
 
 #include "NeuralNetCUDA.h"
+#include "GPUFunctions.h"
 
 const uint32_t THREADSPERBLOCK = 1024;	
 #define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
 
 
-__device__ int d_genRandomNeuron() {
+__device__ int d_genRandomNeuron(curandState * state,
+								 int index,
+								 int connectionsPerNeuron,
+								 int neuronsPerPartition,
+								 int partitions) {
 	int neuronIndex = index / connectionsPerNeuron;
 	int partitionIndex = neuronIndex / neuronsPerPartition;
 	int partitionX = (partitionIndex % partitions); 
@@ -26,17 +31,17 @@ __device__ int d_genRandomNeuron() {
 	float maxValueY = partitionY == (partitions - 1) ? 0 : 1;
 	float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
 
-	float x_f = curand_uniform(curandStates + index);
+	float x_f = curand_uniform(state + index);
     x_f *= (maxValueX - minValueX + 0.999999);
     x_f += minValueX;
     int dx = (int) truncf(x_f);
 
-    float y_f = curand_uniform(curandStates + index);
+    float y_f = curand_uniform(state + index);
     y_f *= (maxValueY - minValueY + 0.999999);
     y_f += maxValueY;
     int dy = (int) truncf(y_f);
 
-    float z_f = curand_uniform(curandStates + index);
+    float z_f = curand_uniform(state + index);
     z_f *= (maxValueZ - minValueZ + 0.999999);
     z_f += maxValueZ;
     int dz = (int) truncf(z_f);
@@ -49,7 +54,7 @@ __device__ int d_genRandomNeuron() {
     neuronPartitionIndex *= neuronsPerPartition;
 
 	int newNeuronIndex;
-	z_f = curand_uniform(curandStates + index);
+	z_f = curand_uniform(state + index);
 	// Subtracting one here so that I can guarantee this connection
 	// Doesn't point at itself
     z_f *= (neuronsPerPartition - 1 + 0.999999);
@@ -57,26 +62,31 @@ __device__ int d_genRandomNeuron() {
     newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
     // Guarantees the connection isn't pointing at itself.
     newNeuronIndex += (newNeuronIndex >= neuronIndex);
+
+    return newNeuronIndex;
 }
 
-int h_genRandomNeuron() {
+int h_genRandomNeuron(int index,
+					  int connectionsPerNeuron,
+					  int neuronsPerPartition,
+					  int partitions) {
 	int neuronIndex = index / connectionsPerNeuron;
 	int partitionIndex = neuronIndex / neuronsPerPartition;
 	int partitionX = (partitionIndex % partitions); 
 	int partitionY = (partitionIndex / partitions) % partitions;
 	int partitionZ = (partitionIndex / (partitions * partitions));
 	
-	float minValueX = partitionX == 0 ? 0 : -1;
-	float minValueY = partitionY == 0 ? 0 : -1;
-	float minValueZ = partitionZ == 0 ? 0 : -1;
+	int minValueX = partitionX == 0 ? 0 : -1;
+	int minValueY = partitionY == 0 ? 0 : -1;
+	int minValueZ = partitionZ == 0 ? 0 : -1;
 
-	float maxValueX = partitionX == (partitions - 1) ? 0 : 1;
-	float maxValueY = partitionY == (partitions - 1) ? 0 : 1;
-	float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
+	int maxValueX = partitionX == (partitions - 1) ? 0 : 1;
+	int maxValueY = partitionY == (partitions - 1) ? 0 : 1;
+	int maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
 
-    int dx = rand() % (maxValueX - minValueX + 1) + minValueX;
-    int dy = rand() % (maxValueY - minValueY + 1) + minValueY;
-    int dz = rand() % (maxValueZ - minValueZ + 1) + minValueZ;
+    int dx = (rand() % (maxValueX - minValueX + 1)) + minValueX;
+    int dy = (rand() % (maxValueY - minValueY + 1)) + minValueY;
+    int dz = (rand() % (maxValueZ - minValueZ + 1)) + minValueZ;
 
     int neuronPartitionIndex = 
     		(partitionZ + dz) * partitions * partitions +
@@ -86,13 +96,15 @@ int h_genRandomNeuron() {
     neuronPartitionIndex *= neuronsPerPartition;
 
 	int newNeuronIndex = neuronPartitionIndex;
-    newNeuronIndex += rand() % (neuronsPerPartition)
+    newNeuronIndex += rand() % (neuronsPerPartition);
 
     // Guarantees the connection isn't pointing at itself.
     newNeuronIndex += (newNeuronIndex >= neuronIndex);
+
+    return newNeuronIndex;
 }
 
-__global__ void d_setupRand(curandState *state,
+__global__ void d_setupRand(curandState * state,
 						    int neurons) {
 
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
@@ -151,9 +163,11 @@ __global__ void d_createRandomConnections(curandState * curandStates,
 	int index = threadIdx.x + blockDim.x*blockIdx.x;
 
 	if(index < connectionCount) {
-		int weightIndex = index % connectionsPerNeuron;
-
-		forwardConnections[index] = d_genRandomNeuron();
+		forwardConnections[index] = d_genRandomNeuron(curandStates,
+													  index,
+													  connectionsPerNeuron,
+													  neuronsPerPartition,
+													  partitions);
 
 		float weight = curand_uniform(curandStates + index);
 	    weight *= (maxWeight - minWeight + 0.999999);
@@ -321,7 +335,9 @@ void createRandomConnections(curandState * curandStates,
 							 float minWeight,
 							 float maxWeight,
 							 int32_t * d_forwardConnections,
+							 int16_t * d_forwardConnectionsSub,
 							 int32_t * h_forwardConnections,
+							 int16_t * h_forwardConnectionsSub,
 							 int16_t * h_tempNeuronConnectionSub,
 							 float * connectionWeights,
 							 int partitions,
@@ -340,7 +356,7 @@ void createRandomConnections(curandState * curandStates,
 			curandStates,
 			minWeight,
 			maxWeight,
-			forwardConnections,
+			d_forwardConnections,
 			connectionWeights,
 			partitions,
 			neuronsPerPartition,
@@ -358,12 +374,15 @@ void createRandomConnections(curandState * curandStates,
 	for(int i = 0; i < neurons; i++) {
 		for(int j = 0; j < connectionsPerNeuron; j++) {
 			while(arrayContains(
-				h_forwardConnections[i * connectionsPerNeuron],
+				&h_forwardConnections[i * connectionsPerNeuron],
 				h_forwardConnections[i * connectionsPerNeuron + j],
 				j)) {
 
 				h_forwardConnections[i * connectionsPerNeuron + j] =
-					h_genRandomNeuron();
+					h_genRandomNeuron(i,
+									  connectionsPerNeuron,
+									  neuronsPerPartition,
+									  partitions);
 				
 			}
 		}
@@ -397,7 +416,6 @@ void normalizeConnections(int32_t * forwardConnections,
 						  int neurons,
 						  int connectionsPerNeuron,
 						  float decayRate) {
-	int neurons = partitionCount * neuronsPerPartition;
 
 	d_normalizeNeurons <<< 
 						  BlockCount(neurons),
@@ -462,8 +480,7 @@ void doNeuronReduction(float * receivingSignal,
 						   BlockCount(connections),
 						   THREADSPERBLOCK >>> (
 				receivingSignal,
-				partitionCount,
-				neuronsPerPartition,
+				connections,
 				connectionsPerNeuron);
 
 }

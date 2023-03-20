@@ -14,13 +14,41 @@ void randomizeNeurons(curandState * curandStates,
 void createRandomConnections(curandState * curandStates,
 							 float minWeight,
 							 float maxWeight,
-							 int32_t * forwardConnections,
+							 int32_t * d_forwardConnections,
+							 int16_t * d_forwardConnectionsSub,
+							 int32_t * h_forwardConnections,
+							 int16_t * h_forwardConnectionsSub,
+							 int16_t * h_tempNeuronConnectionSub,
 							 float * connectionWeights,
 							 int partitions,
 							 int partitionCount,
 							 int neuronsPerPartition,
 							 int connectionsPerNeuron);
 
-void normalizeConnections();
+void normalizeConnections(int32_t * forwardConnections,
+						  float * connectionWeights,
+						  float * activationThresholds,
+						  int neurons,
+						  int connectionsPerNeuron,
+						  float decayRate);
+
+void zeroizeReceivers(float * receivingSignal,
+					  int partitionCount,
+					  int neuronsPerPartition,
+					  int connectionsPerNeuron);
+
+void mainFeedforward(float * receivingSignal,
+					 uint8_t * activations,
+					 int32_t * forwardConnections,
+					 int16_t * forwardConnectionsSub,
+					 float * connectionWeights,
+					 int partitionCount,
+					 int neuronsPerPartition,
+					 int connectionsPerNeuron);
+
+void doNeuronReduction(float * receivingSignal,
+					   int partitionCount,
+					   int neuronsPerPartition,
+					   int connectionsPerNeuron);
 
 #endif
