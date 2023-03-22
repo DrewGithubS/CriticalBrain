@@ -35,8 +35,10 @@ Organism::Organism() {
 	}
 }
 
-Organism::Organism(float xIn,
-				   float yIn) {
+Organism::Organism(
+	float xIn,
+	float yIn)
+{
 	xPos = xIn;
 	yPos = yIn;
 	xVel = 0;
@@ -51,10 +53,12 @@ Organism::Organism(float xIn,
 	}
 }
 
-Organism::Organism(float xIn,
-				   float yIn,
-				   float xVelIn,
-				   float yVelIn) {
+Organism::Organism(
+	float xIn,
+	float yIn,
+	float xVelIn,
+	float yVelIn)
+{
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -69,12 +73,14 @@ Organism::Organism(float xIn,
 	}
 }
 
-Organism::Organism(float xIn,
-				   float yIn,
-				   float xVelIn,
-				   float yVelIn,
-				   float * legXIn,
-				   float * legYIn) {
+Organism::Organism(
+	float xIn,
+	float yIn,
+	float xVelIn,
+	float yVelIn,
+	float * legXIn,
+	float * legYIn)
+{
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -88,14 +94,16 @@ Organism::Organism(float xIn,
 	}
 }
 
-Organism::Organism(float xIn,
-				   float yIn,
-				   float xVelIn,
-				   float yVelIn,
-				   float * legXIn,
-				   float * legYIn,
-				   float * legVelXIn,
-				   float * legVelYIn) {
+Organism::Organism(
+	float xIn,
+	float yIn,
+	float xVelIn,
+	float yVelIn,
+	float * legXIn,
+	float * legYIn,
+	float * legVelXIn,
+	float * legVelYIn)
+{
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;
@@ -109,15 +117,17 @@ Organism::Organism(float xIn,
 	}
 }
 
-Organism::Organism(float xIn,
-				   float yIn,
-				   float xVelIn,
-				   float yVelIn,
-				   float * legXIn,
-				   float * legYIn,
-				   float * legVelXIn,
-				   float * legVelYIn,
-				   float * gripIn) {
+Organism::Organism(
+	float xIn,
+	float yIn,
+	float xVelIn,
+	float yVelIn,
+	float * legXIn,
+	float * legYIn,
+	float * legVelXIn,
+	float * legVelYIn,
+	float * gripIn)
+{
 	xPos = xIn;
 	yPos = yIn;
 	xVel = xVelIn;

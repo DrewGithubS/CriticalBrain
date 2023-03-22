@@ -15,7 +15,8 @@ const uint32_t THREADSPERBLOCK = 1024;
 
 #define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
 
-__device__ int32_t absoluteValue(int32_t a) {
+__device__ int32_t absoluteValue(int32_t a)
+{
 	return a < 0 ? -a : a;
 }
 
@@ -25,10 +26,8 @@ __device__ uint32_t calcRectangleArea(
 	int32_t Bx,
 	int32_t By,
 	int32_t Cx,
-	int32_t Cy) {
-
-
-
+	int32_t Cy)
+{
 	return absoluteValue( 
 				(Bx * Ay - Ax * By) +
 				(Cx * By - Bx * Cy) +
@@ -43,8 +42,8 @@ __global__ void drawCircle(
 	uint32_t circleX,
 	uint32_t circleY,
 	uint32_t circleRad,
-	uint32_t pixelValue) {
-
+	uint32_t pixelValue)
+{
 	uint32_t index = blockIdx.x *blockDim.x + threadIdx.x;
 
 	if(index < imageWidth * imageHeight) {
@@ -78,8 +77,8 @@ __global__ void drawRectangle(
 	uint32_t Cy,
 	uint32_t Dx,
 	uint32_t Dy,
-	uint32_t pixelValue) {
-
+	uint32_t pixelValue)
+{
 	uint32_t index = blockIdx.x *blockDim.x + threadIdx.x;
 
 	if(index < imageWidth * imageHeight) {
@@ -112,20 +111,23 @@ __global__ void drawRectangle(
 	}
 }
 
-Animation::Animation(uint32_t widthIn, uint32_t heightIn) {
+Animation::Animation(uint32_t widthIn, uint32_t heightIn)
+{
 	width = widthIn;
 	height = heightIn;
 	init();
 }
 
-void Animation::init() {
+void Animation::init()
+{
 	imageSize = width * height * sizeof(uint32_t);
 	image = (uint32_t *) malloc(imageSize);
 	d_image = (uint32_t *) gpuMemAlloc(imageSize);
 	blockCountGPU = BlockCount(imageWidth * imageHeight);
 }
 
-void Animation::nextFrame(Organism * organism) {
+void Animation::nextFrame(Organism * organism)
+{
 	cudaMemset(d_image, 0x00000000, imageSize);
 	float organismX = organism->getXPos();
 	float organismY = organism->getYPos();
@@ -195,11 +197,13 @@ void Animation::nextFrame(Organism * organism) {
 		0xFFFFFFFF);
 }
 
-void Animation::exit() {
+void Animation::exit()
+{
 	cudaFree(d_image);
 }
 
-void * Animation::getImage() {
+void * Animation::getImage()
+{
 	cudaMemcpy(image, d_image, imageSize, cudaMemcpyDeviceToHost);
 	return image;
 }

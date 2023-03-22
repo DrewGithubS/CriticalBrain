@@ -4,12 +4,13 @@
 #include "GPUFunctions.h"
 #include "NeuralNet.h"
 
-NeuralNet::NeuralNet(int partitionsIn,
-					 int neuronsPerPartitionIn,
-					 int maxConnectionsPerNeuronIn,
-					 int feedsBeforeRebalanceIn,
-					 int rebalancesBeforeKillingIn) {
-
+NeuralNet::NeuralNet(
+		int partitionsIn,
+		int neuronsPerPartitionIn,
+		int maxConnectionsPerNeuronIn,
+		int feedsBeforeRebalanceIn,
+		int rebalancesBeforeKillingIn)
+{
 	partitions = partitionsIn;
 	neuronsPerPartition = neuronsPerPartitionIn;
 	maxConnectionsPerNeuron = maxConnectionsPerNeuronIn;
@@ -142,124 +143,142 @@ NeuralNet::NeuralNet(int partitionsIn,
 		sizeof(int16_t));
 }
 
-void NeuralNet::randomize() {
-	randomizeNeurons(d_randState,
-					 d_activationThresholds,
-					 0.7,
-					 1.4,
-					 partitionCount,
-					 neuronsPerPartition);
+void NeuralNet::randomize()
+{
+	randomizeNeurons(
+		d_randState,
+		d_activationThresholds,
+		0.7,
+		1.4,
+		partitionCount,
+		neuronsPerPartition);
 
-	createRandomConnections(d_randState,
-							0,
-							1,
-							d_forwardConnections,
-							d_forwardConnectionsSub,
-							h_forwardConnections,
-							h_forwardConnectionsSub,
-							h_tempNeuronConnectionSub,
-							d_connectionWeights,
-							partitions,
-							partitionCount,
-							neuronsPerPartition,
-							maxConnectionsPerNeuron);
+	createRandomConnections(
+		d_randState,
+		0,
+		1,
+		d_forwardConnections,
+		d_forwardConnectionsSub,
+		h_forwardConnections,
+		h_forwardConnectionsSub,
+		h_tempNeuronConnectionSub,
+		d_connectionWeights,
+		partitions,
+		partitionCount,
+		neuronsPerPartition,
+		maxConnectionsPerNeuron);
 
-	normalizeConnections(d_forwardConnections,
-						 d_connectionWeights,
-						 d_activationThresholds,
-						 partitionCount * neuronsPerPartition,
-						 maxConnectionsPerNeuron,
-						 decayRate);
+	normalizeConnections(
+		d_forwardConnections,
+		d_connectionWeights,
+		d_activationThresholds,
+		partitionCount * neuronsPerPartition,
+		maxConnectionsPerNeuron,
+		decayRate);
 }
 
-void NeuralNet::feedforward() {
-	zeroizeReceivers(d_receivingSignal,
-					 partitionCount,
-					 neuronsPerPartition,
-					 maxConnectionsPerNeuron);
+void NeuralNet::feedforward()
+{
+	zeroizeReceivers(
+		d_receivingSignal,
+		partitionCount,
+		neuronsPerPartition,
+		maxConnectionsPerNeuron);
 
-	mainFeedforward(d_receivingSignal,
-					 d_activations,
-					 d_forwardConnections,
-					 d_forwardConnectionsSub,
-					 d_connectionWeights,
-					 partitionCount,
-					 neuronsPerPartition,
-					 maxConnectionsPerNeuron);
+	mainFeedforward(
+		d_receivingSignal,
+		d_activations,
+		d_forwardConnections,
+		d_forwardConnectionsSub,
+		d_connectionWeights,
+		partitionCount,
+		neuronsPerPartition,
+		maxConnectionsPerNeuron);
 
-	doNeuronReduction(d_receivingSignal,
-					  partitionCount,
-					  neuronsPerPartition,
-					  maxConnectionsPerNeuron);
+	doNeuronReduction(
+		d_receivingSignal,
+		partitionCount,
+		neuronsPerPartition,
+		maxConnectionsPerNeuron);
 
-	doExcitationDecay(d_receivingSignal,
-					  d_excitationLevel,
-					  decayRate,
-					  partitionCount,
-					  neuronsPerPartition,
-					  maxConnectionsPerNeuron);
+	doExcitationDecay(
+		d_receivingSignal,
+		d_excitationLevel,
+		decayRate,
+		partitionCount,
+		neuronsPerPartition,
+		maxConnectionsPerNeuron);
 
-	calculateActivations(d_excitationLevel,
-					  	 d_activationThresholds,
-						 d_activations,
-						 d_neuronActivationCountRebalance,
-						 d_neuronActivationCountKilling,
-						 partitionCount,
-						 maxConnectionsPerNeuron);
+	calculateActivations(
+		d_excitationLevel,
+		d_activationThresholds,
+		d_activations,
+		d_neuronActivationCountRebalance,
+		d_neuronActivationCountKilling,
+		partitionCount,
+		maxConnectionsPerNeuron);
 	
 	feedforwardCount++;
 
 	if(feedforwardCount == feedsBeforeRebalance &&
 			rebalanceCount == rebalancesBeforeKilling) {
-		determineKilledNeurons(d_neuronActivationCountKilling,
-							   d_activations,
-							   0, // TODO: This needs a real value
-							   partitionCount,
-							   neuronsPerPartition);
+		determineKilledNeurons(
+			d_neuronActivationCountKilling,
+			d_activations,
+			0, // TODO: This needs a real value
+			partitionCount,
+			neuronsPerPartition);
 
-		randomizeDeadNeurons(d_randState,
-							 0,
-							 1,
-							 0.7,
-							 1.4,
-							 d_activationThresholds,
-							 d_forwardConnections,
-							 d_forwardConnectionsSub,
-							 h_forwardConnections,
-							 h_forwardConnectionsSub,
-							 h_tempNeuronConnectionSub,
-							 d_connectionWeights,
-							 d_activations,
-							 partitions,
-							 partitionCount,
-							 neuronsPerPartition,
-							 maxConnectionsPerNeuron);
+		randomizeDeadNeurons(
+			d_randState,
+			0,
+			1,
+			0.7,
+			1.4,
+			d_activationThresholds,
+			d_forwardConnections,
+			d_forwardConnectionsSub,
+			h_forwardConnections,
+			h_forwardConnectionsSub,
+			h_tempNeuronConnectionSub,
+			d_connectionWeights,
+			d_activations,
+			partitions,
+			partitionCount,
+			neuronsPerPartition,
+			maxConnectionsPerNeuron);
 
-		zeroizeActivationCounts(d_neuronActivationCountKilling,
-								partitionCount,
-								neuronsPerPartition);
+		zeroizeActivationCounts(
+			d_neuronActivationCountKilling,
+			partitionCount,
+			neuronsPerPartition);
 
-		normalizeConnections(d_forwardConnections,
-						 d_connectionWeights,
-						 d_activationThresholds,
-						 partitionCount * neuronsPerPartition,
-						 maxConnectionsPerNeuron,
-						 decayRate);
+		normalizeConnections(
+			d_forwardConnections,
+			d_connectionWeights,
+			d_activationThresholds,
+			partitionCount * neuronsPerPartition,
+			maxConnectionsPerNeuron,
+			decayRate);
+
 		feedforwardCount = 0;
 		rebalanceCount = 0;
 	} else if(feedforwardCount == feedsBeforeRebalance) {
 		// rebalanceConnections();
 
-		normalizeConnections(d_forwardConnections,
-						 d_connectionWeights,
-						 d_activationThresholds,
-						 partitionCount * neuronsPerPartition,
-						 maxConnectionsPerNeuron,
-						 decayRate);
+		normalizeConnections(
+			d_forwardConnections,
+			d_connectionWeights,
+			d_activationThresholds,
+			partitionCount * neuronsPerPartition,
+			maxConnectionsPerNeuron,
+			decayRate);
 
-		zeroizeActivationCounts(d_neuronActivationCountRebalance,
-								partitionCount,
-								neuronsPerPartition);
+		zeroizeActivationCounts(
+			d_neuronActivationCountRebalance,
+			partitionCount,
+			neuronsPerPartition);
+
 		rebalanceCount++;
 		feedforwardCount = 0;
 	}

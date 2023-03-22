@@ -41,11 +41,12 @@ private:
 	uint16_t * d_neuronActivationCountRebalance;
 	uint16_t * d_neuronActivationCountKilling;
 public:
-	NeuralNet(int partitions,
-			  int neuronsPerPartition,
-			  int maxConnectionsPerNeuron,
-			  int feedsBeforeRebalanceIn,
-			  int rebalancesBeforeKillingIn);
+	NeuralNet(
+		int partitions,
+		int neuronsPerPartition,
+		int maxConnectionsPerNeuron,
+		int feedsBeforeRebalanceIn,
+		int rebalancesBeforeKillingIn);
 
 	void randomize();
 	void feedforward();
