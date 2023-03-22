@@ -193,24 +193,42 @@ void NeuralNet::feedforward() {
 					  partitionCount,
 					  neuronsPerPartition,
 					  maxConnectionsPerNeuron);
-	// doExcitationDecay();
-	// calculateActivations();
-	// feedforwardCount++;
 
-	// if(feedforwardCount == feedsBeforeRebalance &&
-	// 		rebalanceCount == rebalancesBeforeKilling) {
-	// 
-	// 	determineKilledNeurons();
-	// 	randomizeDeadNeurons();
-	// 	ensureUniqueConnections();
-	// 	zeroizeActivationCounts(d_neuronActivationCountKilling);
-	// 	feedforwardCount = 0;
-	// 	rebalanceCount = 0;
-	// } else if(feedforwardCount == feedsBeforeRebalance) {
-	//  rebalanceConnections();
-	// 	normalizeConnections();
-	// 	zeroizeActivationCounts(d_neuronActivationCountRebalance);
-	// 	rebalanceCount++;
-	// 	feedforwardCount = 0;
-	// }
+	doExcitationDecay(d_receivingSignal,
+					  d_excitationLevel,
+					  decayRate,
+					  partitionCount,
+					  neuronsPerPartition,
+					  maxConnectionsPerNeuron);
+
+	calculateActivations(d_excitationLevel,
+					  	 d_activationThresholds,
+						 d_activations,
+						 d_neuronActivationCountRebalance,
+						 d_neuronActivationCountKilling,
+						 partitionCount,
+						 maxConnectionsPerNeuron);
+	
+	feedforwardCount++;
+
+	if(feedforwardCount == feedsBeforeRebalance &&
+			rebalanceCount == rebalancesBeforeKilling) {
+		determineKilledNeurons(d_neuronActivationCountKilling,
+							   d_activations,
+							   0, // TODO: This needs a real value
+							   partitionCount,
+							   neuronsPerPartition);
+
+		// randomizeDeadNeurons();
+		// ensureUniqueConnections();
+		// zeroizeActivationCounts(d_neuronActivationCountKilling);
+		feedforwardCount = 0;
+		rebalanceCount = 0;
+	} else if(feedforwardCount == feedsBeforeRebalance) {
+		// rebalanceConnections();
+		// normalizeConnections();
+		// zeroizeActivationCounts(d_neuronActivationCountRebalance);
+		rebalanceCount++;
+		feedforwardCount = 0;
+	}
 }

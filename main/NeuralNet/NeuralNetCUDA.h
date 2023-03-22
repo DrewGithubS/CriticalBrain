@@ -51,4 +51,25 @@ void doNeuronReduction(float * receivingSignal,
 					   int neuronsPerPartition,
 					   int connectionsPerNeuron);
 
+void doExcitationDecay(float * receivingSignal,
+					   float * excitationLevel,
+					   float decayRate,
+					   int partitionCount,
+					   int neuronsPerPartition,
+					   int connectionsPerNeuron);
+
+void calculateActivations(float * excitationLevel,
+						  float * activationThresholds,
+						  uint8_t * activations,
+						  uint16_t * activationCount1,
+						  uint16_t * activationCount2,
+						  int partitionCount,
+						  int neuronsPerPartition);
+
+void determineKilledNeurons(uint16_t * activationCount,
+							uint8_t * activations,
+							uint16_t minimumActivations,
+							int partitionCount,
+							int neuronsPerPartition);
+
 #endif
