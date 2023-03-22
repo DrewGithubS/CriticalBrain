@@ -72,4 +72,26 @@ void determineKilledNeurons(uint16_t * activationCount,
 							int partitionCount,
 							int neuronsPerPartition);
 
+void randomizeDeadNeurons(curandState * curandStates,
+						  float minWeight,
+						  float maxWeight,
+						  float minActivation,
+						  float maxActivation,
+						  float * activationThresholds,
+						  int32_t * d_forwardConnections,
+						  int16_t * d_forwardConnectionsSub,
+						  int32_t * h_forwardConnections,
+						  int16_t * h_forwardConnectionsSub,
+						  int16_t * h_tempNeuronConnectionSub,
+						  float * connectionWeights,
+						  uint8_t * activations,
+						  int partitions,
+						  int partitionCount,
+						  int neuronsPerPartition,
+						  int connectionsPerNeuron);
+
+void zeroizeActivationCounts(uint16_t * activationCount,
+							 int partitionCount,
+							 int neuronsPerPartition);
+
 #endif

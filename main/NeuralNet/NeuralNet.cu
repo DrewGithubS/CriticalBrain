@@ -86,8 +86,6 @@ NeuralNet::NeuralNet(int partitionsIn,
 		sizeof(uint16_t));
 
 
-
-
 	h_forwardConnections = (int32_t *) gpuMemAlloc(
 		partitionCount *
 		neuronsPerPartition *
@@ -219,15 +217,49 @@ void NeuralNet::feedforward() {
 							   partitionCount,
 							   neuronsPerPartition);
 
-		// randomizeDeadNeurons();
-		// ensureUniqueConnections();
-		// zeroizeActivationCounts(d_neuronActivationCountKilling);
+		randomizeDeadNeurons(d_randState,
+							 0,
+							 1,
+							 0.7,
+							 1.4,
+							 d_activationThresholds,
+							 d_forwardConnections,
+							 d_forwardConnectionsSub,
+							 h_forwardConnections,
+							 h_forwardConnectionsSub,
+							 h_tempNeuronConnectionSub,
+							 d_connectionWeights,
+							 d_activations,
+							 partitions,
+							 partitionCount,
+							 neuronsPerPartition,
+							 maxConnectionsPerNeuron);
+
+		zeroizeActivationCounts(d_neuronActivationCountKilling,
+								partitionCount,
+								neuronsPerPartition);
+
+		normalizeConnections(d_forwardConnections,
+						 d_connectionWeights,
+						 d_activationThresholds,
+						 partitionCount * neuronsPerPartition,
+						 maxConnectionsPerNeuron,
+						 decayRate);
 		feedforwardCount = 0;
 		rebalanceCount = 0;
 	} else if(feedforwardCount == feedsBeforeRebalance) {
 		// rebalanceConnections();
-		// normalizeConnections();
-		// zeroizeActivationCounts(d_neuronActivationCountRebalance);
+
+		normalizeConnections(d_forwardConnections,
+						 d_connectionWeights,
+						 d_activationThresholds,
+						 partitionCount * neuronsPerPartition,
+						 maxConnectionsPerNeuron,
+						 decayRate);
+
+		zeroizeActivationCounts(d_neuronActivationCountRebalance,
+								partitionCount,
+								neuronsPerPartition);
 		rebalanceCount++;
 		feedforwardCount = 0;
 	}
