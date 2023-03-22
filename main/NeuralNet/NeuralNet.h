@@ -40,7 +40,12 @@ private:
 	uint8_t * d_activations;
 	uint16_t * d_neuronActivationCountRebalance;
 	uint16_t * d_neuronActivationCountKilling;
+
+	void loadFromFile(FILE * file);
+	void allocateAll();
+
 public:
+	NeuralNet();
 	NeuralNet(
 		int partitions,
 		int neuronsPerPartition,
@@ -51,7 +56,6 @@ public:
 	void randomize();
 	void feedforward();
 	void saveToFile(FILE * file);
-	void loadFromFile(FILE * file);
 };
 
 #endif

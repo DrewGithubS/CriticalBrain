@@ -105,4 +105,20 @@ void zeroizeActivationCounts(
 	int partitionCount,
 	int neuronsPerPartition);
 
+void rebalanceConnections(
+	int32_t * d_forwardConnections,
+	int16_t * d_forwardConnectionsSub,
+	int32_t * h_forwardConnections,
+	int16_t * h_forwardConnectionsSub,
+	int16_t * h_tempNeuronConnectionSub,
+	float * connectionWeights,
+	uint16_t * activationCount,
+	uint16_t minimumActivations,
+	float changeConstant,
+	float minimumWeightValue,
+	int partitions,
+	int partitionCount,
+	int neuronsPerPartition,
+	int connectionsPerNeuron);
+
 #endif

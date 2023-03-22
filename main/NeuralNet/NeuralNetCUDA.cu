@@ -82,11 +82,12 @@ __global__ void d_createRandomConnections(
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if(index < connectionCount) {
-		forwardConnections[index] = d_genRandomNeuron(curandStates,
-													  index,
-													  connectionsPerNeuron,
-													  neuronsPerPartition,
-													  partitions);
+		forwardConnections[index] = d_genRandomNeuron(
+			curandStates,
+			index,
+			connectionsPerNeuron,
+			neuronsPerPartition,
+			partitions);
 
 		float weight = curand_uniform(curandStates + index);
 	    weight *= (maxWeight - minWeight + 0.999999);
@@ -113,7 +114,7 @@ __global__ void d_normalizeNeurons(
 		for(int i = 0; i < connectionsPerNeuron; i++) {
 			neuronIndex = connectionBegin + i;
 			sumTotal += connectionWeights[neuronIndex] / 
-						activationThresholds[forwardConnections[neuronIndex]];
+				activationThresholds[forwardConnections[neuronIndex]];
 		}
 
 		// Ensures the sum of all the connection rates is
@@ -153,10 +154,10 @@ __global__ void d_feedForward(
 	if(index < connections) {
 		int neuron = index / connectionsPerNeuron;
 		receivingSignal[
-						forwardConnections[index] *
-						connectionsPerNeuron +
-						forwardConnectionsSub[index]] = 
-			activations[neuron] ? connectionWeights[index] : 0;
+			forwardConnections[index] *
+			connectionsPerNeuron +
+			forwardConnectionsSub[index]] = 
+				activations[neuron] ? connectionWeights[index] : 0;
 	}
 }
 
@@ -208,12 +209,13 @@ __global__ void d_doNeuronReduction(
 		while(tempConnections > 0) {
 			int increment = tempConnections / 2;
 			if(connectionIndex < increment) {
+
 				receivingSignal[neuron *
-								connectionsPerNeuron +
-								connectionIndex] += 
-					receivingSignal[neuron *
-									connectionsPerNeuron +
-									connectionIndex + increment];
+					connectionsPerNeuron +
+					connectionIndex] += 
+						receivingSignal[neuron *
+						connectionsPerNeuron +
+						connectionIndex + increment];
 
 			}
 
@@ -269,7 +271,6 @@ __global__ void d_determineKilledNeurons(
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if(index < neurons) {
-
 		activations[index] = 
 			activationCount[index] < minimumActivations ? 255 : 0;
 	}
@@ -332,7 +333,7 @@ __global__ void d_randomizeDeadNeurons(
 				index,
 				connectionsPerNeuron,
 				neuronsPerPartition,
-								  partitions);
+				partitions);
 		}
 	}
 }
@@ -345,6 +346,48 @@ __global__ void d_zeroizeActivationCounts(
 
 	if(index < neurons) {
 		activationCount[index] = 0;
+	}
+}
+
+__global__ void d_rebalanceConnections(
+	int32_t * forwardConnections,
+	float * connectionWeights,
+	uint16_t * activationCount,
+	uint16_t minimumActivations,
+	float minimumWeightValue,
+	float changeConstant,
+	int neurons,
+	int connectionsPerNeuron)
+{
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(index < neurons) {
+		float sum = 0;
+		int connectionBegin = index * connectionsPerNeuron;
+		int neuronIndex;
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			neuronIndex = forwardConnections[connectionBegin + i];
+			sum += (float) activationCount[neuronIndex];
+		}
+
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			connectionWeights[connectionBegin + i] += 
+				connectionsPerNeuron * 
+				( (float) (activationCount[i]) - 
+					(sum / (float) connectionsPerNeuron) )
+						/ (sum);
+		}
+
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			if(
+			activationCount[forwardConnections[connectionBegin + i]] <
+				minimumActivations || 
+			fabs(connectionWeights[connectionBegin + i]) <
+				minimumWeightValue) {
+
+				forwardConnections[connectionBegin + i] = -1;
+			}
+		}
 	}
 }
 
@@ -427,8 +470,8 @@ void normalizeConnections(
 	float decayRate)
 {
 	d_normalizeNeurons <<< 
-						  BlockCount(neurons),
-						  THREADSPERBLOCK >>> (
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
 			forwardConnections,
 			connectionWeights,
 			activationThresholds,
@@ -447,8 +490,8 @@ void zeroizeReceivers(
 	int connections = neurons * connectionsPerNeuron;
 
 	d_zeroizeReceivers <<< 
-						  BlockCount(connections),
-						  THREADSPERBLOCK >>> (
+		BlockCount(connections),
+		THREADSPERBLOCK >>> (
 			receivingSignal,
 			connections);
 }
@@ -467,8 +510,8 @@ void mainFeedforward(
 	int connections = neurons * connectionsPerNeuron;
 
 	d_feedForward <<< 
-					 BlockCount(connections),
-					 THREADSPERBLOCK >>> (
+		BlockCount(connections),
+		THREADSPERBLOCK >>> (
 			receivingSignal,
 			activations,
 			forwardConnections,
@@ -489,11 +532,11 @@ void doNeuronReduction(
 	int connections = neurons * connectionsPerNeuron;
 
 	d_doNeuronReduction <<< 
-						   BlockCount(connections),
-						   THREADSPERBLOCK >>> (
-				receivingSignal,
-				connections,
-				connectionsPerNeuron);
+		BlockCount(connections),
+		THREADSPERBLOCK >>> (
+			receivingSignal,
+			connections,
+			connectionsPerNeuron);
 
 }
 
@@ -509,13 +552,13 @@ void doExcitationDecay(
 	int connections = neurons * connectionsPerNeuron;
 
 	d_doExcitationDecay <<< 
-						   BlockCount(connections),
-						   THREADSPERBLOCK >>> (
-				receivingSignal,
-				excitationLevel,
-				decayRate,
-				neurons,
-				connectionsPerNeuron);
+		BlockCount(connections),
+		THREADSPERBLOCK >>> (
+			receivingSignal,
+			excitationLevel,
+			decayRate,
+			neurons,
+			connectionsPerNeuron);
 
 }
 
@@ -531,15 +574,14 @@ void calculateActivations(
 	int neurons = partitionCount * neuronsPerPartition;
 
 	d_calculateActivations <<< 
-						   BlockCount(neurons),
-						   THREADSPERBLOCK >>> (
-				excitationLevel,
-				activationThresholds,
-				activations,
-				activationCount1,
-				activationCount2,
-				neurons);
-
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			excitationLevel,
+			activationThresholds,
+			activations,
+			activationCount1,
+			activationCount2,
+			neurons);
 }
 
 void determineKilledNeurons(
@@ -552,12 +594,12 @@ void determineKilledNeurons(
 	int neurons = partitionCount * neuronsPerPartition;
 
 	d_determineKilledNeurons <<< 
-						   BlockCount(neurons),
-						   THREADSPERBLOCK >>> (
-				activationCount,
-				activations,
-				minimumActivations,
-				neurons);
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			activationCount,
+			activations,
+			minimumActivations,
+			neurons);
 }
 
 void randomizeDeadNeurons(
@@ -583,32 +625,33 @@ void randomizeDeadNeurons(
 	int connections = neurons * connectionsPerNeuron;
 
 	d_randomizeDeadNeurons <<< 
-							   BlockCount(neurons),
-							   THREADSPERBLOCK >>> (
-				curandStates,
-				minWeight,
-				maxWeight,
-				minActivation,
-				maxActivation,
-				activationThresholds,
-				d_forwardConnections,
-				connectionWeights,
-				activations,
-				partitions,
-				neuronsPerPartition,
-				neurons,
-				connectionsPerNeuron,
-				connections);
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			curandStates,
+			minWeight,
+			maxWeight,
+			minActivation,
+			maxActivation,
+			activationThresholds,
+			d_forwardConnections,
+			connectionWeights,
+			activations,
+			partitions,
+			neuronsPerPartition,
+			neurons,
+			connectionsPerNeuron,
+			connections);
 
-	ensureUniqueConnections(d_forwardConnections,
-							d_forwardConnectionsSub,
-							h_forwardConnections,
-							h_forwardConnectionsSub,
-							h_tempNeuronConnectionSub,
-							partitions,
-							partitionCount,
-							neuronsPerPartition,
-							connectionsPerNeuron);
+	ensureUniqueConnections(
+		d_forwardConnections,
+		d_forwardConnectionsSub,
+		h_forwardConnections,
+		h_forwardConnectionsSub,
+		h_tempNeuronConnectionSub,
+		partitions,
+		partitionCount,
+		neuronsPerPartition,
+		connectionsPerNeuron);
 }
 
 void zeroizeActivationCounts(
@@ -619,13 +662,53 @@ void zeroizeActivationCounts(
 	int neurons = partitionCount * neuronsPerPartition;
 
 	d_zeroizeActivationCounts <<< 
-							   BlockCount(neurons),
-							   THREADSPERBLOCK >>> (
-				activationCount,
-				neurons);
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			activationCount,
+			neurons);
 }
 
+void rebalanceConnections(
+	int32_t * d_forwardConnections,
+	int16_t * d_forwardConnectionsSub,
+	int32_t * h_forwardConnections,
+	int16_t * h_forwardConnectionsSub,
+	int16_t * h_tempNeuronConnectionSub,
+	float * connectionWeights,
+	uint16_t * activationCount,
+	uint16_t minimumActivations,
+	float changeConstant,
+	float minimumWeightValue,
+	int partitions,
+	int partitionCount,
+	int neuronsPerPartition,
+	int connectionsPerNeuron)
+{
+	int neurons = partitionCount * neuronsPerPartition;
 
+	d_rebalanceConnections <<< 
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			d_forwardConnections,
+			connectionWeights,
+			activationCount,
+			minimumActivations,
+			minimumWeightValue,
+			changeConstant,
+			neurons,
+			connectionsPerNeuron);
+
+	ensureUniqueConnections(
+		d_forwardConnections,
+		d_forwardConnectionsSub,
+		h_forwardConnections,
+		h_forwardConnectionsSub,
+		h_tempNeuronConnectionSub,
+		partitions,
+		partitionCount,
+		neuronsPerPartition,
+		connectionsPerNeuron);
+}
 
 
 
@@ -779,10 +862,11 @@ void ensureUniqueConnections(
 	// to work in parallel or work faster.
 	for(int i = 0; i < neurons; i++) {
 		for(int j = 0; j < connectionsPerNeuron; j++) {
-			while(arrayContains(
-				&h_forwardConnections[i * connectionsPerNeuron],
-				h_forwardConnections[i * connectionsPerNeuron + j],
-				j)) {
+			while(h_forwardConnections[i * connectionsPerNeuron + j] == -1 ||
+				arrayContains(
+					&h_forwardConnections[i * connectionsPerNeuron],
+					h_forwardConnections[i * connectionsPerNeuron + j],
+					j)) {
 
 				h_forwardConnections[i * connectionsPerNeuron + j] =
 					h_genRandomNeuron(i,
