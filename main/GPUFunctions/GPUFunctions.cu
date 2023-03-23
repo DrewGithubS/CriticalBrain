@@ -20,3 +20,7 @@ void memcpyCPUtoGPU(void * to, void * from, size_t size) {
 void memcpyGPUtoCPU(void * to, void * from, size_t size) {
 	cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
 }
+
+void gpuFree(void * ptr) {
+	cudaFree(ptr);
+}

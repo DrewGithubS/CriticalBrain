@@ -17,15 +17,13 @@ void createRandomConnections(
 	float minWeight,
 	float maxWeight,
 	int32_t * d_forwardConnections,
-	int16_t * d_forwardConnectionsSub,
 	int32_t * h_forwardConnections,
-	int16_t * h_forwardConnectionsSub,
-	int16_t * h_tempNeuronConnectionSub,
 	float * connectionWeights,
 	int partitions,
 	int partitionCount,
 	int neuronsPerPartition,
-	int connectionsPerNeuron);
+	int connectionsPerNeuron,
+	int inputNeurons);
 
 void normalizeConnections(
 	int32_t * forwardConnections,
@@ -35,30 +33,17 @@ void normalizeConnections(
 	int connectionsPerNeuron,
 	float decayRate);
 
-void zeroizeReceivers(
-	float * receivingSignal,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron);
-
 void mainFeedforward(
-	float * receivingSignal,
+	float * excitationLevel,
 	uint8_t * activations,
 	int32_t * forwardConnections,
-	int16_t * forwardConnectionsSub,
 	float * connectionWeights,
 	int partitionCount,
 	int neuronsPerPartition,
-	int connectionsPerNeuron);
-
-void doNeuronReduction(
-	float * receivingSignal,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron);
+	int connectionsPerNeuron,
+	int outputNeurons);
 
 void doExcitationDecay(
-	float * receivingSignal,
 	float * excitationLevel,
 	float decayRate,
 	int partitionCount,
@@ -89,16 +74,14 @@ void randomizeDeadNeurons(
 	float maxActivation,
 	float * activationThresholds,
 	int32_t * d_forwardConnections,
-	int16_t * d_forwardConnectionsSub,
 	int32_t * h_forwardConnections,
-	int16_t * h_forwardConnectionsSub,
-	int16_t * h_tempNeuronConnectionSub,
 	float * connectionWeights,
 	uint8_t * activations,
 	int partitions,
 	int partitionCount,
 	int neuronsPerPartition,
-	int connectionsPerNeuron);
+	int connectionsPerNeuron,
+	int inputNeurons);
 
 void zeroizeActivationCounts(
 	uint16_t * activationCount,
@@ -107,10 +90,7 @@ void zeroizeActivationCounts(
 
 void rebalanceConnections(
 	int32_t * d_forwardConnections,
-	int16_t * d_forwardConnectionsSub,
 	int32_t * h_forwardConnections,
-	int16_t * h_forwardConnectionsSub,
-	int16_t * h_tempNeuronConnectionSub,
 	float * connectionWeights,
 	uint16_t * activationCount,
 	uint16_t minimumActivations,
@@ -119,6 +99,7 @@ void rebalanceConnections(
 	int partitions,
 	int partitionCount,
 	int neuronsPerPartition,
-	int connectionsPerNeuron);
+	int connectionsPerNeuron,
+	int inputNeurons);
 
 #endif

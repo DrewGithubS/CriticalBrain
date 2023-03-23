@@ -18,9 +18,17 @@ private:
 	int rebalanceCount;
 	int rebalancesBeforeKilling;
 	float decayRate;
+	float minWeightValue;
+	float maxWeightValue;
+	float minActivationValue;
+	float maxActivationValue;
+	uint16_t minimumActivations;
+	float changeConstant;
+	float weightKillValue;
+	int inputNeurons;
+	int outputNeurons;
 
 	int32_t * h_forwardConnections;
-	int16_t * h_forwardConnectionsSub;
 	float * h_connectionWeights;
 	float * h_activationThresholds;
 	float * h_receivingSignal;
@@ -28,14 +36,11 @@ private:
 	uint8_t * h_activations;
 	uint16_t * h_neuronActivationCountRebalance;
 	uint16_t * h_neuronActivationCountKilling;
-	int16_t * h_tempNeuronConnectionSub;
 
 	curandState * d_randState;
 	int32_t * d_forwardConnections;
-	int16_t * d_forwardConnectionsSub;
 	float * d_connectionWeights;
 	float * d_activationThresholds;
-	float * d_receivingSignal;
 	float * d_excitationLevel;
 	uint8_t * d_activations;
 	uint16_t * d_neuronActivationCountRebalance;
@@ -51,7 +56,19 @@ public:
 		int neuronsPerPartition,
 		int maxConnectionsPerNeuron,
 		int feedsBeforeRebalanceIn,
-		int rebalancesBeforeKillingIn);
+		int rebalancesBeforeKillingIn,
+		float decayRate,
+		float minWeightValue,
+		float maxWeightValue,
+		float minActivationValue,
+		float maxActivationValue,
+		uint16_t minimumActivations,
+		float changeConstant,
+		float weightKillValue,
+		int inputNeurons,
+		int outputNeurons);
+
+	~NeuralNet();
 
 	void randomize();
 	void feedforward();
