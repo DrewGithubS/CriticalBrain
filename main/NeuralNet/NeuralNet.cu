@@ -22,7 +22,8 @@ NeuralNet::NeuralNet(
 		float maxWeightValueIn,
 		float minActivationValueIn,
 		float maxActivationValueIn,
-		uint16_t minimumActivationsIn,
+		uint16_t minimumKillingActivationsIn,
+		uint16_t minimumRebalanceActivationsIn,
 		float changeConstantIn,
 		float weightKillValueIn,
 		int inputNeuronsIn,
@@ -38,7 +39,8 @@ NeuralNet::NeuralNet(
 	maxWeightValue = maxWeightValueIn;
 	minActivationValue = minActivationValueIn;
 	maxActivationValue = maxActivationValueIn;
-	minimumActivations = minimumActivationsIn;
+	minimumKillingActivations = minimumKillingActivationsIn;
+	minimumRebalanceActivations = minimumRebalanceActivationsIn;
 	changeConstant = changeConstantIn;
 	weightKillValue = weightKillValueIn;
 	inputNeurons = inputNeuronsIn;
@@ -47,10 +49,8 @@ NeuralNet::NeuralNet(
 	allocateAll();
 
 	setupRand(
-		d_randState,
-		rand(),
-		partitionCount,
-		neuronsPerPartition);
+		this,
+		rand());
 }
 
 NeuralNet::~NeuralNet() {
@@ -338,7 +338,8 @@ void NeuralNet::saveToFile(FILE * file) {
 	fwrite(&maxWeightValue, 1, sizeof(float), file);
 	fwrite(&minActivationValue, 1, sizeof(float), file);
 	fwrite(&maxActivationValue, 1, sizeof(float), file);
-	fwrite(&minimumActivations, 1, sizeof(uint16_t), file);
+	fwrite(&minimumKillingActivations, 1, sizeof(uint16_t), file);
+	fwrite(&minimumRebalanceActivations, 1, sizeof(uint16_t), file);
 	fwrite(&changeConstant, 1, sizeof(float), file);
 	fwrite(&weightKillValue, 1, sizeof(float), file);
 	fwrite(&inputNeurons, 1, sizeof(int), file);
@@ -403,7 +404,8 @@ void NeuralNet::loadFromFile(FILE * file) {
 	fread(&maxWeightValue, 1, sizeof(float), file);
 	fread(&minActivationValue, 1, sizeof(float), file);
 	fread(&maxActivationValue, 1, sizeof(float), file);
-	fread(&minimumActivations, 1, sizeof(uint16_t), file);
+	fread(&minimumKillingActivations, 1, sizeof(uint16_t), file);
+	fread(&minimumRebalanceActivations, 1, sizeof(uint16_t), file);
 	fread(&changeConstant, 1, sizeof(float), file);
 	fread(&weightKillValue, 1, sizeof(float), file);
 	fread(&inputNeurons, 1, sizeof(int), file);
@@ -519,148 +521,152 @@ void NeuralNet::loadFromFile(FILE * file) {
 
 /********************************** GETTERS *********************************/
 
-void NeuralNet::getPartitions() {
+int NeuralNet::getPartitions() {
 	return partitions;
 }
 
-void NeuralNet::getPartitionCount() {
+int NeuralNet::getPartitionCount() {
 	return partitionCount;
 }
 
-void NeuralNet::getNeuronsPerPartition() {
+int NeuralNet::getNeuronsPerPartition() {
 	return neuronsPerPartition;
 }
 
-void NeuralNet::getMaxConnectionsPerNeuron() {
+int NeuralNet::getMaxConnectionsPerNeuron() {
 	return maxConnectionsPerNeuron;
 }
 
-void NeuralNet::getNeuronCount() {
+int NeuralNet::getNeuronCount() {
 	return neuronCount;
 }
 
-void NeuralNet::getConnectionCount() {
+int NeuralNet::getConnectionCount() {
 	return connectionCount;
 }
 
-void NeuralNet::getFeedforwardCount() {
+int NeuralNet::getFeedforwardCount() {
 	return feedforwardCount;
 }
 
-void NeuralNet::getFeedsBeforeRebalance() {
+int NeuralNet::getFeedsBeforeRebalance() {
 	return feedsBeforeRebalance;
 }
 
-void NeuralNet::getRebalanceCount() {
+int NeuralNet::getRebalanceCount() {
 	return rebalanceCount;
 }
 
-void NeuralNet::getRebalancesBeforeKilling() {
+int NeuralNet::getRebalancesBeforeKilling() {
 	return rebalancesBeforeKilling;
 }
 
-void NeuralNet::getDecayRate() {
+float NeuralNet::getDecayRate() {
 	return decayRate;
 }
 
-void NeuralNet::getMinWeightValue() {
+float NeuralNet::getMinWeightValue() {
 	return minWeightValue;
 }
 
-void NeuralNet::getMaxWeightValue() {
+float NeuralNet::getMaxWeightValue() {
 	return maxWeightValue;
 }
 
-void NeuralNet::getMinActivationValue() {
+float NeuralNet::getMinActivationValue() {
 	return minActivationValue;
 }
 
-void NeuralNet::getMaxActivationValue() {
+float NeuralNet::getMaxActivationValue() {
 	return maxActivationValue;
 }
 
-void NeuralNet::getMinimumActivations() {
-	return minimumActivations;
+uint16_t NeuralNet::getMinimumKillingActivations() {
+	return minimumKillingActivations;
 }
 
-void NeuralNet::getChangeConstant() {
+uint16_t NeuralNet::getMinimumRebalanceActivations() {
+	return minimumRebalanceActivations;
+}
+
+float NeuralNet::getChangeConstant() {
 	return changeConstant;
 }
 
-void NeuralNet::getWeightKillValue() {
+float NeuralNet::getWeightKillValue() {
 	return weightKillValue;
 }
 
-void NeuralNet::getInputNeurons() {
+int NeuralNet::getInputNeurons() {
 	return inputNeurons;
 }
 
-void NeuralNet::getOutputNeurons() {
+int NeuralNet::getOutputNeurons() {
 	return outputNeurons;
 }
 
 
-void NeuralNet::getHostForwardConnections() {
+int32_t * NeuralNet::getHostForwardConnections() {
 	return h_forwardConnections;
 }
 
-void NeuralNet::getHostConnectionWeights() {
+float * NeuralNet::getHostConnectionWeights() {
 	return h_connectionWeights;
 }
 
-void NeuralNet::getHostActivationThresholds() {
+float * NeuralNet::getHostActivationThresholds() {
 	return h_activationThresholds;
 }
 
-void NeuralNet::getHostReceivingSignal() {
+float * NeuralNet::getHostReceivingSignal() {
 	return h_receivingSignal;
 }
 
-void NeuralNet::getHostExcitationLevel() {
+float * NeuralNet::getHostExcitationLevel() {
 	return h_excitationLevel;
 }
 
-void NeuralNet::getHostActivations() {
+uint8_t * NeuralNet::getHostActivations() {
 	return h_activations;
 }
 
-void NeuralNet::getHostNeuronActivationCountRebalance() {
+uint16_t * NeuralNet::getHostNeuronActivationCountRebalance() {
 	return h_neuronActivationCountRebalance;
 }
 
-void NeuralNet::gethHostNeuronActivationCountKilling() {
+uint16_t * NeuralNet::gethHostNeuronActivationCountKilling() {
 	return h_neuronActivationCountKilling;
 }
 
 
-void getDeviceRandState() {
+curandState * NeuralNet::getDeviceRandState() {
 	return d_randState;
 }
 
-void getDeviceForwardConnections() {
+int32_t * NeuralNet::getDeviceForwardConnections() {
 	return d_forwardConnections;
 }
 
-void getDeviceConnectionWeights() {
+float * NeuralNet::getDeviceConnectionWeights() {
 	return d_connectionWeights;
 }
 
-void getDeviceActivationThresholds() {
+float * NeuralNet::getDeviceActivationThresholds() {
 	return d_activationThresholds;
 }
 
-void getDeviceExcitationLevel() {
+float * NeuralNet::getDeviceExcitationLevel() {
 	return d_excitationLevel;
 }
 
-void getDeviceActivations() {
+uint8_t * NeuralNet::getDeviceActivations() {
 	return d_activations;
 }
 
-void getDeviceNeuronActivationCountRebalance() {
+uint16_t * NeuralNet::getDeviceNeuronActivationCountRebalance() {
 	return d_neuronActivationCountRebalance;
 }
 
-void getDeviceNeuronActivationCountKilling() {
+uint16_t * NeuralNet::getDeviceNeuronActivationCountKilling() {
 	return d_neuronActivationCountKilling;
 }

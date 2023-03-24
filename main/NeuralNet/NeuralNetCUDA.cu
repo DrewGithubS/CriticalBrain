@@ -7,6 +7,7 @@
 #include <cstdio>
 
 #include "NeuralNetCUDA.h"
+#include "NeuralNet.h"
 #include "GPUFunctions.h"
 
 const uint32_t THREADSPERBLOCK = 1024;	
@@ -157,8 +158,7 @@ __global__ void d_feedForward(
 __global__ void d_doExcitationDecay(
 	float * excitationLevel,
 	float decayRate,
-	int neurons,
-	int connectionsPerNeuron)
+	int neurons)
 {
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -424,7 +424,8 @@ void normalizeConnections(
 void mainFeedforward(
 	NeuralNet * net)
 {
-	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	float * excitationLevel = net->getDeviceExcitationLevel();
+	uint8_t * activations = net->getDeviceActivations();
 	int32_t * forwardConnections = net->getDeviceForwardConnections();
 	float * connectionWeights = net->getDeviceConnectionWeights();
 	int connections = net->getConnectionCount();
@@ -448,29 +449,27 @@ void mainFeedforward(
 void doExcitationDecay(
 	NeuralNet * net)
 {
-	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	float * excitationLevel = net->getDeviceExcitationLevel();
 	float decayRate = net->getDecayRate();
 	int neurons = net->getNeuronCount();
-	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
 
 	d_doExcitationDecay <<< 
-		BlockCount(connections),
+		BlockCount(neurons),
 		THREADSPERBLOCK >>> (
 			excitationLevel,
 			decayRate,
-			neurons,
-			connectionsPerNeuron);
+			neurons);
 
 }
 
 void calculateActivations(
 	NeuralNet * net)
 {
-	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	float * excitationLevel = net->getDeviceExcitationLevel();
 	float * activationThresholds = net->getDeviceActivationThresholds();
 	uint8_t * activations = net->getDeviceActivations();
-	uint8_t * activationCount1 = net->getHostNeuronActivationCountRebalance();
-	uint8_t * activationCount2 = net->gethHostNeuronActivationCountKilling();
+	uint16_t * activationCount1 = net->getHostNeuronActivationCountRebalance();
+	uint16_t * activationCount2 = net->gethHostNeuronActivationCountKilling();
 	int neurons = net->getNeuronCount();
 
 	d_calculateActivations <<< 
@@ -487,7 +486,7 @@ void calculateActivations(
 void determineKilledNeurons(
 	NeuralNet * net)
 {
-	uint8_t * activationCount = net->gethHostNeuronActivationCountKilling();
+	uint16_t * activationCount = net->gethHostNeuronActivationCountKilling();
 	uint8_t * activations = net->getDeviceActivations();
 	uint16_t minimumKillingActivations = net->getMinimumKillingActivations();
 	int neurons = net->getNeuronCount();
@@ -497,7 +496,7 @@ void determineKilledNeurons(
 		THREADSPERBLOCK >>> (
 			activationCount,
 			activations,
-			minimumActivations,
+			minimumKillingActivations,
 			neurons);
 }
 
@@ -516,13 +515,12 @@ void randomizeDeadNeurons(
 	float * connectionWeights = net->getDeviceConnectionWeights();
 	uint8_t * activations = net->getDeviceActivations();
 	int partitions = net->getPartitions();
+	int partitionCount = net->getPartitionCount();
 	int neuronsPerPartition = net->getNeuronsPerPartition();
 	int neurons = net->getNeuronCount();
 	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
 	int connections = net->getConnectionCount();
-
-	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * connectionsPerNeuron;
+	int inputNeurons = net->getInputNeurons();
 
 	d_randomizeDeadNeurons <<< 
 		BlockCount(neurons),
@@ -569,7 +567,7 @@ void rebalanceConnections(
 	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
 	int32_t * h_forwardConnections = net->getHostForwardConnections();
 	float * connectionWeights = net->getDeviceConnectionWeights();
-	uint8_t * activationCount = net->getHostNeuronActivationCountRebalance();
+	uint16_t * activationCount = net->getHostNeuronActivationCountRebalance();
 	uint16_t minimumRebalanceActivations =
 		net->getMinimumRebalanceActivations();
 	float changeConstant = net->getChangeConstant();
@@ -587,8 +585,8 @@ void rebalanceConnections(
 			d_forwardConnections,
 			connectionWeights,
 			activationCount,
-			minimumActivations,
-			minimumWeightValue,
+			minimumRebalanceActivations,
+			weightKillValue,
 			changeConstant,
 			neurons,
 			connectionsPerNeuron);

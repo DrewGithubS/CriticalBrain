@@ -4,8 +4,11 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+class NeuralNet;
+
 void setupRand(
-	NeuralNet * net);
+	NeuralNet * net,
+	int seed);
 
 void randomizeNeurons(
 	NeuralNet * net);

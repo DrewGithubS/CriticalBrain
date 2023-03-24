@@ -24,7 +24,8 @@ private:
 	float maxWeightValue;
 	float minActivationValue;
 	float maxActivationValue;
-	uint16_t minimumActivations;
+	uint16_t minimumKillingActivations;
+	uint16_t minimumRebalanceActivations;
 	float changeConstant;
 	float weightKillValue;
 	int inputNeurons;
@@ -64,7 +65,8 @@ public:
 		float maxWeightValue,
 		float minActivationValue,
 		float maxActivationValue,
-		uint16_t minimumActivations,
+		uint16_t minimumRebalanceActivations,
+		uint16_t minimumKillingActivations,
 		float changeConstant,
 		float weightKillValue,
 		int inputNeurons,
@@ -80,44 +82,45 @@ public:
 	void setInputs(uint8_t * inputs);
 	void getoutputs(uint8_t * outputs);
 
-	void getPartitions();
-	void getPartitionCount();
-	void getNeuronsPerPartition();
-	void getMaxConnectionsPerNeuron();
-	void getNeuronCount();
-	void getConnectionCount();
-	void getFeedforwardCount();
-	void getFeedsBeforeRebalance();
-	void getRebalanceCount();
-	void getRebalancesBeforeKilling();
-	void getDecayRate();
-	void getMinWeightValue();
-	void getMaxWeightValue();
-	void getMinActivationValue();
-	void getMaxActivationValue();
-	void getMinimumActivations();
-	void getChangeConstant();
-	void getWeightKillValue();
-	void getInputNeurons();
-	void getOutputNeurons();
+	int getPartitions();
+	int getPartitionCount();
+	int getNeuronsPerPartition();
+	int getMaxConnectionsPerNeuron();
+	int getNeuronCount();
+	int getConnectionCount();
+	int getFeedforwardCount();
+	int getFeedsBeforeRebalance();
+	int getRebalanceCount();
+	int getRebalancesBeforeKilling();
+	float getDecayRate();
+	float getMinWeightValue();
+	float getMaxWeightValue();
+	float getMinActivationValue();
+	float getMaxActivationValue();
+	uint16_t getMinimumKillingActivations();
+	uint16_t getMinimumRebalanceActivations();
+	float getChangeConstant();
+	float getWeightKillValue();
+	int getInputNeurons();
+	int getOutputNeurons();
 
-	void getHostForwardConnections();
-	void getHostConnectionWeights();
-	void getHostActivationThresholds();
-	void getHostReceivingSignal();
-	void getHostExcitationLevel();
-	void getHostActivations();
-	void getHostNeuronActivationCountRebalance();
-	void gethHostNeuronActivationCountKilling();
+	int32_t * getHostForwardConnections();
+	float * getHostConnectionWeights();
+	float * getHostActivationThresholds();
+	float * getHostReceivingSignal();
+	float * getHostExcitationLevel();
+	uint8_t * getHostActivations();
+	uint16_t * getHostNeuronActivationCountRebalance();
+	uint16_t * gethHostNeuronActivationCountKilling();
 
-	void getDeviceRandState();
-	void getDeviceForwardConnections();
-	void getDeviceConnectionWeights();
-	void getDeviceActivationThresholds();
-	void getDeviceExcitationLevel();
-	void getDeviceActivations();
-	void getDeviceNeuronActivationCountRebalance();
-	void getDeviceNeuronActivationCountKilling();
+	curandState * getDeviceRandState();
+	int32_t * getDeviceForwardConnections();
+	float * getDeviceConnectionWeights();
+	float * getDeviceActivationThresholds();
+	float * getDeviceExcitationLevel();
+	uint8_t * getDeviceActivations();
+	uint16_t * getDeviceNeuronActivationCountRebalance();
+	uint16_t * getDeviceNeuronActivationCountKilling();
 };
 
 #endif
