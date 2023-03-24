@@ -37,6 +37,7 @@ private:
 	float * h_receivingSignal;
 	float * h_excitationLevel;
 	uint8_t * h_activations;
+	uint8_t * h_specialNeurons;
 	uint16_t * h_neuronActivationCountRebalance;
 	uint16_t * h_neuronActivationCountKilling;
 
@@ -46,8 +47,19 @@ private:
 	float * d_activationThresholds;
 	float * d_excitationLevel;
 	uint8_t * d_activations;
+	uint8_t * d_specialNeurons;
 	uint16_t * d_neuronActivationCountRebalance;
 	uint16_t * d_neuronActivationCountKilling;
+
+	int32_t * h_inputNeuronIndices;
+	uint8_t * h_inputNeuronValues;
+	int32_t * h_outputNeuronIndices;
+	uint8_t * h_outputNeuronValues;
+
+	int32_t * d_inputNeuronIndices;
+	uint8_t * d_inputNeuronValues;
+	int32_t * d_outputNeuronIndices;
+	uint8_t * d_outputNeuronValues;
 
 	void loadFromFile(FILE * file);
 	void allocateAll();
@@ -75,7 +87,9 @@ public:
 	~NeuralNet();
 
 	void randomize();
+	void setInputValues(uint8_t * inputs);
 	void feedforward();
+	void getOutputValues(uint8_t * outputs);
 	void copyToCPU();
 	void printNetwork();
 	void saveToFile(FILE * file);
@@ -101,8 +115,8 @@ public:
 	uint16_t getMinimumRebalanceActivations();
 	float getChangeConstant();
 	float getWeightKillValue();
-	int getInputNeurons();
-	int getOutputNeurons();
+	int getInputNeuronCount();
+	int getOutputNeuronCount();
 
 	int32_t * getHostForwardConnections();
 	float * getHostConnectionWeights();
@@ -110,8 +124,9 @@ public:
 	float * getHostReceivingSignal();
 	float * getHostExcitationLevel();
 	uint8_t * getHostActivations();
+	uint8_t * getHostSpecialNeurons();
 	uint16_t * getHostNeuronActivationCountRebalance();
-	uint16_t * gethHostNeuronActivationCountKilling();
+	uint16_t * getHostNeuronActivationCountKilling();
 
 	curandState * getDeviceRandState();
 	int32_t * getDeviceForwardConnections();
@@ -119,8 +134,19 @@ public:
 	float * getDeviceActivationThresholds();
 	float * getDeviceExcitationLevel();
 	uint8_t * getDeviceActivations();
+	uint8_t * getDeviceSpecialNeurons();
 	uint16_t * getDeviceNeuronActivationCountRebalance();
 	uint16_t * getDeviceNeuronActivationCountKilling();
+
+	uint8_t * getHostInputNeuronValues();
+	int32_t * getHostInputNeuronIndices();
+	uint8_t * getHostOutputNeuronValues();
+	int32_t * getHostOutputNeuronIndices();
+
+	uint8_t * getDeviceInputNeuronValues();
+	int32_t * getDeviceInputNeuronIndices();
+	uint8_t * getDeviceOutputNeuronValues();
+	int32_t * getDeviceOutputNeuronIndices();
 };
 
 #endif

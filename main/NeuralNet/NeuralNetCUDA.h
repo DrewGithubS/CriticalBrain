@@ -19,7 +19,13 @@ void createRandomConnections(
 void normalizeConnections(
 	NeuralNet * net);
 
+void setNetworkInputs(
+	NeuralNet * net);
+
 void mainFeedforward(
+	NeuralNet * net);
+
+void getNetworkOutputs(
 	NeuralNet * net);
 
 void doExcitationDecay(

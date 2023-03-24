@@ -1,7 +1,11 @@
 // NOTE: Positive activations for good things and negative for bad things.
 // The goal of the neural net should be to maximize perception.
 
-
+enum {
+	NORMAL_NEURON,
+	OUTPUT_NEURON,
+	INPUT_NEURON,
+} NeuronTypes;
 
 #include <cstdint>
 #include <cstdio>
@@ -13,7 +17,7 @@
 const uint32_t THREADSPERBLOCK = 1024;	
 #define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
 
-uint8_t arrayContains(int32_t * arr, int32_t item, int len);
+__device__ uint8_t arrayContains(int32_t * arr, int32_t item, int len);
 
 __device__ int d_genRandomNeuron(
 	curandState * state,
@@ -21,23 +25,6 @@ __device__ int d_genRandomNeuron(
 	int connectionsPerNeuron,
 	int neuronsPerPartition,
 	int partitions);
-
-int h_genRandomNeuron(
-	int index,
-	int connectionsPerNeuron,
-	int neuronsPerPartition,
-	int partitions);
-
-void ensureUniqueConnections(
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons);
-
-
 
 __global__ void d_setupRand(
 	curandState * state,
@@ -82,19 +69,63 @@ __global__ void d_createRandomConnections(
 {
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
-	if(index < connectionCount) {
-		forwardConnections[index] = d_genRandomNeuron(
-			curandStates,
-			index,
-			connectionsPerNeuron,
-			neuronsPerPartition,
-			partitions);
+	if(index < neuronCount) {
+		int cIndex = index * connectionsPerNeuron;
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			forwardConnections[cIndex + i] = d_genRandomNeuron(
+				curandStates,
+				index,
+				connectionsPerNeuron,
+				neuronsPerPartition,
+				partitions);
 
-		float weight = curand_uniform(curandStates + index);
-	    weight *= (maxWeight - minWeight);
-	    weight += minWeight;
-		
-	    connectionWeights[index] = weight;
+			float weight = curand_uniform(curandStates + index);
+		    weight *= (maxWeight - minWeight);
+		    weight += minWeight;
+			
+		    connectionWeights[cIndex + i] = weight;
+		}
+	}
+}
+
+__global__ void d_ensureUniqueConnections(
+	curandState * curandStates,
+	int32_t * forwardConnections,
+	uint8_t * specialNeurons,
+	int partitions,
+	int inputNeurons,
+	int connectionsPerNeuron,
+	int neuronsPerPartition,
+	int neuronCount)
+{
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(index < neuronCount) {
+		for(int j = 0; j < connectionsPerNeuron; j++) {
+			while(
+				forwardConnections[index * connectionsPerNeuron + j]
+					== index ||
+				forwardConnections[index * connectionsPerNeuron + j]
+					< inputNeurons ||
+				forwardConnections[index * connectionsPerNeuron + j]
+					== -1 ||
+				specialNeurons[
+					forwardConnections[index * connectionsPerNeuron + j]]
+						== INPUT_NEURON ||
+				arrayContains(
+					&forwardConnections[index * connectionsPerNeuron],
+					forwardConnections[index * connectionsPerNeuron + j],
+					j)) {
+
+				forwardConnections[index * connectionsPerNeuron + j] =
+					d_genRandomNeuron(curandStates,
+						index,
+						connectionsPerNeuron,
+						neuronsPerPartition,
+						partitions);
+				
+			}
+		}
 	}
 }
 
@@ -129,10 +160,24 @@ __global__ void d_normalizeNeurons(
 	}
 }
 
+__global__ void d_setNetworkInputs(
+	uint8_t * inputValues,
+	uint8_t * activations,
+	int32_t * inputNeuronIndices,
+	int inputNeuronCount)
+{
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(index < inputNeuronCount) {
+		activations[inputNeuronIndices[index]] = inputValues[index];
+	}
+}
+
 __global__ void d_feedForward(
 	float * excitationLevel,
 	uint8_t * activations,
 	int32_t * forwardConnections,
+	uint8_t * specialNeurons,
 	float * connectionWeights,
 	int connections,
 	int connectionsPerNeuron,
@@ -147,11 +192,24 @@ __global__ void d_feedForward(
 			excitationLevel[neuron] = 0;
 		}
 		
-		if(neuron < (neurons - outputNeurons)) {
+		if(specialNeurons[index] != OUTPUT_NEURON) {
 			atomicAdd(&excitationLevel[
 				forwardConnections[index]],
 				activations[neuron] ? connectionWeights[index] : 0);
 		}
+	}
+}
+
+__global__ void d_getNetworkOutputs(
+	uint8_t * outputValues,
+	uint8_t * activations,
+	int32_t * outputNeuronIndices,
+	int outputNeuronCount)
+{
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(index < outputNeuronCount) {
+		outputValues[index] = activations[outputNeuronIndices[index]];
 	}
 }
 
@@ -196,14 +254,16 @@ __global__ void d_calculateActivations(
 __global__ void d_determineKilledNeurons(
 	uint16_t * activationCount,
 	uint8_t * activations,
+	uint8_t * specialNeurons,
 	uint16_t minimumActivations,
 	int neurons)
 {
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if(index < neurons) {
-		activations[index] = 
-			activationCount[index] < minimumActivations ? 255 : 0;
+		activations[index] =
+			specialNeurons[index] == NORMAL_NEURON *
+			(activationCount[index] < minimumActivations ? 255 : 0);
 	}
 }
 
@@ -324,7 +384,8 @@ __global__ void d_rebalanceConnections(
 
 void setupRand(
 	NeuralNet * net,
-	int seed) {
+	int seed)
+{
 
 	curandState * curandStates = net->getDeviceRandState();
 	int neurons = net->getNeuronCount();
@@ -333,6 +394,8 @@ void setupRand(
 		curandStates,
 		neurons,
 		seed);
+
+	cudaDeviceSynchronize();
 }
 
 void randomizeNeurons(
@@ -352,6 +415,8 @@ void randomizeNeurons(
 		maxActivation,
 		partitions,
 		neurons);
+
+	cudaDeviceSynchronize();
 }
 
 void createRandomConnections(
@@ -362,7 +427,7 @@ void createRandomConnections(
 	float minWeight = net->getMinWeightValue();
 	float maxWeight = net->getMaxWeightValue();
 	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
-	int32_t * h_forwardConnections = net->getHostForwardConnections();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	float * d_connectionWeights = net->getDeviceConnectionWeights();
 	int partitions = net->getPartitions();
 	int partitionCount = net->getPartitionCount();
@@ -370,10 +435,9 @@ void createRandomConnections(
 	int neurons = net->getNeuronCount();
 	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
 	int connections = net->getConnectionCount();
-	int inputNeurons = net->getInputNeurons();
+	int inputNeurons = net->getInputNeuronCount();
 
 
-	printf("Calling GPU function...\n"); fflush(stdout);
 	d_createRandomConnections <<< 
 		BlockCount(connections),
 		THREADSPERBLOCK >>> (
@@ -388,16 +452,19 @@ void createRandomConnections(
 			connectionsPerNeuron,
 			connections);
 
-	printf("Ensuring unique connections...\n");
-	ensureUniqueConnections(
-		d_forwardConnections,
-		h_forwardConnections,
-		partitions,
-		partitionCount,
-		neuronsPerPartition,
-		connectionsPerNeuron,
-		inputNeurons);
-	
+	d_ensureUniqueConnections <<< 
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			curandStates,
+			d_forwardConnections,
+			specialNeurons,
+			partitions,
+			inputNeurons,
+			connectionsPerNeuron,
+			neuronsPerPartition,
+			neurons);
+
+	cudaDeviceSynchronize();
 }
 
 void normalizeConnections(
@@ -419,6 +486,31 @@ void normalizeConnections(
 			neurons,
 			connectionsPerNeuron,
 			decayRate);
+
+	cudaDeviceSynchronize();
+}
+
+void setNetworkInputs(
+	NeuralNet * net)
+{
+	uint8_t * h_inputValues = net->getHostInputNeuronValues();
+	uint8_t * activations = net->getDeviceActivations();
+	uint8_t * d_inputValues = net->getDeviceInputNeuronValues();
+	int32_t * d_inputNeuronIndices = net->getDeviceInputNeuronIndices();
+	uint32_t inputNeuronCount = net->getInputNeuronCount();
+
+	memcpyCPUtoGPU(
+		d_inputValues,
+		h_inputValues,
+		inputNeuronCount * sizeof(uint8_t));
+
+	d_setNetworkInputs <<< 
+		BlockCount(inputNeuronCount),
+		THREADSPERBLOCK >>> (
+			d_inputValues,
+			activations,
+			d_inputNeuronIndices,
+			inputNeuronCount);
 }
 
 void mainFeedforward(
@@ -427,11 +519,12 @@ void mainFeedforward(
 	float * excitationLevel = net->getDeviceExcitationLevel();
 	uint8_t * activations = net->getDeviceActivations();
 	int32_t * forwardConnections = net->getDeviceForwardConnections();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	float * connectionWeights = net->getDeviceConnectionWeights();
 	int connections = net->getConnectionCount();
 	int neurons = net->getNeuronCount();
 	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
-	int outputNeurons = net->getOutputNeurons();
+	int outputNeurons = net->getOutputNeuronCount();
 
 	d_feedForward <<< 
 		BlockCount(connections),
@@ -439,11 +532,39 @@ void mainFeedforward(
 			excitationLevel,
 			activations,
 			forwardConnections,
+			specialNeurons,
 			connectionWeights,
 			connections,
 			connectionsPerNeuron,
 			neurons,
 			outputNeurons);
+
+	cudaDeviceSynchronize();
+}
+
+void getNetworkOutputs(
+	NeuralNet * net)
+{
+	uint8_t * h_outputValues = net->getHostOutputNeuronValues();
+	uint8_t * activations = net->getDeviceActivations();
+	uint8_t * d_outputValues = net->getDeviceOutputNeuronValues();
+	int32_t * d_outputNeuronIndices = net->getDeviceOutputNeuronIndices();
+	uint32_t outputNeuronCount = net->getOutputNeuronCount();
+
+	
+
+	d_getNetworkOutputs <<< 
+		BlockCount(outputNeuronCount),
+		THREADSPERBLOCK >>> (
+			h_outputValues,
+			activations,
+			d_outputNeuronIndices,
+			outputNeuronCount);
+
+	memcpyGPUtoCPU(
+		h_outputValues,
+		d_outputValues,
+		outputNeuronCount * sizeof(uint8_t));
 }
 
 void doExcitationDecay(
@@ -460,6 +581,7 @@ void doExcitationDecay(
 			decayRate,
 			neurons);
 
+	cudaDeviceSynchronize();
 }
 
 void calculateActivations(
@@ -469,7 +591,7 @@ void calculateActivations(
 	float * activationThresholds = net->getDeviceActivationThresholds();
 	uint8_t * activations = net->getDeviceActivations();
 	uint16_t * activationCount1 = net->getHostNeuronActivationCountRebalance();
-	uint16_t * activationCount2 = net->gethHostNeuronActivationCountKilling();
+	uint16_t * activationCount2 = net->getHostNeuronActivationCountKilling();
 	int neurons = net->getNeuronCount();
 
 	d_calculateActivations <<< 
@@ -481,13 +603,16 @@ void calculateActivations(
 			activationCount1,
 			activationCount2,
 			neurons);
+
+	cudaDeviceSynchronize();
 }
 
 void determineKilledNeurons(
 	NeuralNet * net)
 {
-	uint16_t * activationCount = net->gethHostNeuronActivationCountKilling();
+	uint16_t * activationCount = net->getHostNeuronActivationCountKilling();
 	uint8_t * activations = net->getDeviceActivations();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	uint16_t minimumKillingActivations = net->getMinimumKillingActivations();
 	int neurons = net->getNeuronCount();
 
@@ -496,14 +621,16 @@ void determineKilledNeurons(
 		THREADSPERBLOCK >>> (
 			activationCount,
 			activations,
+			specialNeurons,
 			minimumKillingActivations,
 			neurons);
+
+	cudaDeviceSynchronize();
 }
 
 void randomizeDeadNeurons(
 	NeuralNet * net)
 {
-
 	curandState * curandStates = net->getDeviceRandState();
 	float minWeight = net->getMinWeightValue();
 	float maxWeight = net->getMaxWeightValue();
@@ -511,16 +638,16 @@ void randomizeDeadNeurons(
 	float maxActivation = net->getMaxActivationValue();
 	float * activationThresholds = net->getDeviceActivationThresholds();
 	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
-	int32_t * h_forwardConnections = net->getHostForwardConnections();
 	float * connectionWeights = net->getDeviceConnectionWeights();
 	uint8_t * activations = net->getDeviceActivations();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	int partitions = net->getPartitions();
 	int partitionCount = net->getPartitionCount();
 	int neuronsPerPartition = net->getNeuronsPerPartition();
 	int neurons = net->getNeuronCount();
 	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
 	int connections = net->getConnectionCount();
-	int inputNeurons = net->getInputNeurons();
+	int inputNeurons = net->getInputNeuronCount();
 
 	d_randomizeDeadNeurons <<< 
 		BlockCount(neurons),
@@ -540,14 +667,19 @@ void randomizeDeadNeurons(
 			connectionsPerNeuron,
 			connections);
 
-	ensureUniqueConnections(
-		d_forwardConnections,
-		h_forwardConnections,
-		partitions,
-		partitionCount,
-		neuronsPerPartition,
-		connectionsPerNeuron,
-		inputNeurons);
+	d_ensureUniqueConnections <<< 
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			curandStates,
+			d_forwardConnections,
+			specialNeurons,
+			partitions,
+			inputNeurons,
+			connectionsPerNeuron,
+			neuronsPerPartition,
+			neurons);
+
+	cudaDeviceSynchronize();
 }
 
 void zeroizeActivationCounts(
@@ -559,11 +691,14 @@ void zeroizeActivationCounts(
 		THREADSPERBLOCK >>> (
 			activationCount,
 			count);
+
+	cudaDeviceSynchronize();
 }
 
 void rebalanceConnections(
 	NeuralNet * net)
 {
+	curandState * curandStates = net->getDeviceRandState();
 	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
 	int32_t * h_forwardConnections = net->getHostForwardConnections();
 	float * connectionWeights = net->getDeviceConnectionWeights();
@@ -572,11 +707,12 @@ void rebalanceConnections(
 		net->getMinimumRebalanceActivations();
 	float changeConstant = net->getChangeConstant();
 	float weightKillValue = net->getWeightKillValue();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	int partitions = net->getPartitions();
 	int partitionCount = net->getPartitionCount();
 	int neuronsPerPartition = net->getNeuronsPerPartition();
 	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
-	int inputNeurons = net->getInputNeurons();
+	int inputNeurons = net->getInputNeuronCount();
 	int neurons = partitionCount * neuronsPerPartition;
 
 	d_rebalanceConnections <<< 
@@ -591,14 +727,19 @@ void rebalanceConnections(
 			neurons,
 			connectionsPerNeuron);
 
-	ensureUniqueConnections(
-		d_forwardConnections,
-		h_forwardConnections,
-		partitions,
-		partitionCount,
-		neuronsPerPartition,
-		connectionsPerNeuron,
-		inputNeurons);
+	d_ensureUniqueConnections <<< 
+		BlockCount(neurons),
+		THREADSPERBLOCK >>> (
+			curandStates,
+			d_forwardConnections,
+			specialNeurons,
+			partitions,
+			inputNeurons,
+			connectionsPerNeuron,
+			neuronsPerPartition,
+			neurons);
+
+	cudaDeviceSynchronize();
 }
 
 
@@ -630,7 +771,7 @@ __device__ int d_genRandomNeuron(
 	int neuronsPerPartition,
 	int partitions)
 {
-	int neuronIndex = index / connectionsPerNeuron;
+	int neuronIndex = index;
 	int partitionIndex = neuronIndex / neuronsPerPartition;
 	int partitionX = (partitionIndex % partitions); 
 	int partitionY = (partitionIndex / partitions) % partitions;
@@ -644,19 +785,21 @@ __device__ int d_genRandomNeuron(
 	float maxValueY = partitionY == (partitions - 1) ? 0 : 1;
 	float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
 
+	
+
 	float x_f = curand_uniform(state + index);
-    x_f *= (maxValueX - minValueX);
+    x_f *= (maxValueX - minValueX + 0.999999);
     x_f += minValueX;
     int dx = (int) truncf(x_f);
 
     float y_f = curand_uniform(state + index);
-    y_f *= (maxValueY - minValueY);
-    y_f += maxValueY;
+    y_f *= (maxValueY - minValueY + 0.999999);
+    y_f += minValueY;
     int dy = (int) truncf(y_f);
 
     float z_f = curand_uniform(state + index);
-    z_f *= (maxValueZ - minValueZ);
-    z_f += maxValueZ;
+    z_f *= (maxValueZ - minValueZ + 0.999999);
+    z_f += minValueZ;
     int dz = (int) truncf(z_f);
 
     int neuronPartitionIndex = 
@@ -670,7 +813,7 @@ __device__ int d_genRandomNeuron(
 	z_f = curand_uniform(state + index);
 	// Subtracting one here so that I can guarantee this connection
 	// Doesn't point at itself
-    z_f *= (neuronsPerPartition - 1);
+    z_f *= (neuronsPerPartition - 1 + 0.999999);
     z_f += 0;
     newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
     // Guarantees the connection isn't pointing at itself.
@@ -679,48 +822,7 @@ __device__ int d_genRandomNeuron(
     return newNeuronIndex;
 }
 
-int h_genRandomNeuron(
-	int index,
-	int connectionsPerNeuron,
-	int neuronsPerPartition,
-	int partitions)
-{
-	int neuronIndex = index / connectionsPerNeuron;
-	int partitionIndex = neuronIndex / neuronsPerPartition;
-	int partitionX = (partitionIndex % partitions); 
-	int partitionY = (partitionIndex / partitions) % partitions;
-	int partitionZ = (partitionIndex / (partitions * partitions));
-	
-	int minValueX = partitionX == 0 ? 0 : -1;
-	int minValueY = partitionY == 0 ? 0 : -1;
-	int minValueZ = partitionZ == 0 ? 0 : -1;
-
-	int maxValueX = partitionX == (partitions - 1) ? 0 : 1;
-	int maxValueY = partitionY == (partitions - 1) ? 0 : 1;
-	int maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
-
-    int dx = (rand() % (maxValueX - minValueX + 1)) + minValueX;
-    int dy = (rand() % (maxValueY - minValueY + 1)) + minValueY;
-    int dz = (rand() % (maxValueZ - minValueZ + 1)) + minValueZ;
-
-    int neuronPartitionIndex = 
-    		(partitionZ + dz) * partitions * partitions +
-			(partitionY + dy) * partitions + 
-			(partitionX + dx);
-
-    neuronPartitionIndex *= neuronsPerPartition;
-
-	int newNeuronIndex = neuronPartitionIndex;
-
-    newNeuronIndex += rand() % (neuronsPerPartition);
-
-    // Guarantees the connection isn't pointing at itself.
-    newNeuronIndex += (newNeuronIndex >= neuronIndex);
-
-    return newNeuronIndex;
-}
-
-uint8_t arrayContains(int32_t * arr, int32_t item, int len)
+__device__ uint8_t arrayContains(int32_t * arr, int32_t item, int len)
 {
 	for(int i = 0; i < len; i++) {
 		if(arr[i] == item) {
@@ -729,50 +831,4 @@ uint8_t arrayContains(int32_t * arr, int32_t item, int len)
 	}
 
 	return 0;
-}
-
-// I need to optimize this somehow.
-void ensureUniqueConnections(
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons)
-{
-	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * connectionsPerNeuron;
-
-	printf("Copying to CPU...\n"); fflush(stdout);
-	memcpyGPUtoCPU(h_forwardConnections, 
-				   d_forwardConnections,
-				   connections * sizeof(int32_t));
-
-	// This is probably very slow. I need a way to optimize this
-	// to work in parallel or work faster.
-	for(int i = 0; i < neurons; i++) {
-		printf("Randomizing for %d neuron...\n", i); fflush(stdout);
-		for(int j = 0; j < connectionsPerNeuron; j++) {
-			printf("Randomizing for %d connection...\n", j); fflush(stdout);
-			while(h_forwardConnections[i * connectionsPerNeuron + j] < inputNeurons ||
-					h_forwardConnections[i * connectionsPerNeuron + j] == -1 ||
-					arrayContains(
-						&h_forwardConnections[i * connectionsPerNeuron],
-						h_forwardConnections[i * connectionsPerNeuron + j],
-						j)) {
-
-				h_forwardConnections[i * connectionsPerNeuron + j] =
-					h_genRandomNeuron(i,
-									  connectionsPerNeuron,
-									  neuronsPerPartition,
-									  partitions);
-				
-			}
-		}
-	}
-
-	memcpyCPUtoGPU(d_forwardConnections, 
-				   h_forwardConnections,
-				   connections * sizeof(int32_t));
 }
