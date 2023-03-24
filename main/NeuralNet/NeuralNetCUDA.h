@@ -13,6 +13,9 @@ void setupRand(
 void randomizeNeurons(
 	NeuralNet * net);
 
+void setSpecialNeurons(
+	NeuralNet * net);
+
 void createRandomConnections(
 	NeuralNet * net);
 

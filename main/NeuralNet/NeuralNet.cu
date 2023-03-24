@@ -11,6 +11,20 @@
 // TODO: Maybe allocating a huge block of memory instead of
 // several small blocks is better.
 
+bool arrayContains(
+	int32_t * array,
+	int32_t value,
+	int index) {
+
+	for(int i = 0; i < index; i++) {
+		if(array[i] == value) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 NeuralNet::NeuralNet(
 		int partitionsIn,
 		int neuronsPerPartitionIn,
@@ -26,8 +40,10 @@ NeuralNet::NeuralNet(
 		uint16_t minimumRebalanceActivationsIn,
 		float changeConstantIn,
 		float weightKillValueIn,
-		int inputNeuronsIn,
-		int outputNeuronsIn)
+		int inputNeuronCountIn,
+		int outputNeuronCountIn,
+		int32_t * inputNeuronIndicesIn,
+		int32_t * outputNeuronIndicesIn)
 {
 	partitions = partitionsIn;
 	neuronsPerPartition = neuronsPerPartitionIn;
@@ -43,10 +59,32 @@ NeuralNet::NeuralNet(
 	minimumRebalanceActivations = minimumRebalanceActivationsIn;
 	changeConstant = changeConstantIn;
 	weightKillValue = weightKillValueIn;
-	inputNeurons = inputNeuronsIn;
-	outputNeurons = outputNeuronsIn;
+	inputNeuronCount = inputNeuronCountIn;
+	outputNeuronCount = outputNeuronCountIn;
 
 	allocateAll();
+
+	if(inputNeuronIndicesIn != 0 && outputNeuronIndicesIn != 0) {
+		memcpy(h_inputNeuronIndices,
+			inputNeuronIndicesIn,
+			inputNeuronCount * sizeof(int32_t));
+
+		memcpyCPUtoGPU(d_outputNeuronIndices,
+			h_outputNeuronIndices,
+			outputNeuronCount *
+			sizeof(int32_t *));
+
+		memcpy(h_outputNeuronIndices,
+			outputNeuronIndicesIn,
+			outputNeuronCount * sizeof(int32_t));
+
+		memcpyGPUtoCPU(d_outputNeuronIndices,
+			h_outputNeuronIndices,
+			outputNeuronCount *
+			sizeof(int32_t *));
+
+		setSpecialNeurons(this);
+	}
 
 	setupRand(
 		this,
@@ -178,38 +216,37 @@ void NeuralNet::allocateAll() {
 
 
 
-	int32_t * h_inputNeurons = (int32_t *) malloc(
-		inputNeurons *
+	h_inputNeuronIndices = (int32_t *) malloc(
+		inputNeuronCount *
 		sizeof(int32_t));
 
-	uint8_t * h_inputNeuronValues = (uint8_t *) malloc(
-		inputNeurons *
+	h_inputNeuronValues = (uint8_t *) malloc(
+		inputNeuronCount *
 		sizeof(uint8_t));
 
-	int32_t * h_outputNeurons = (int32_t *) malloc(
-		outputNeurons *
+	h_outputNeuronIndices = (int32_t *) malloc(
+		outputNeuronCount *
 		sizeof(int32_t));
 
-	uint8_t * h_outputValues = (uint8_t *) malloc(
-		outputNeurons *
-		sizeof(float));
-
-
-
-	int32_t * d_inputNeurons = (int32_t *) gpuMemAlloc(
-		inputNeurons *
-		sizeof(int32_t));
-
-	uint8_t * d_inputNeuronValues = (uint8_t *) gpuMemAlloc(
-		inputNeurons *
+	h_outputNeuronValues = (uint8_t *) malloc(
+		outputNeuronCount *
 		sizeof(uint8_t));
 
-	int32_t * d_outputNeurons = (int32_t *) gpuMemAlloc(
-		outputNeurons *
+
+	d_inputNeuronIndices = (int32_t *) gpuMemAlloc(
+		inputNeuronCount *
 		sizeof(int32_t));
 
-	uint8_t * d_outputValues = (uint8_t *) gpuMemAlloc(
-		outputNeurons *
+	d_inputNeuronValues = (uint8_t *) gpuMemAlloc(
+		inputNeuronCount *
+		sizeof(uint8_t));
+
+	d_outputNeuronIndices = (int32_t *) gpuMemAlloc(
+		outputNeuronCount *
+		sizeof(int32_t));
+
+	d_outputNeuronValues = (uint8_t *) gpuMemAlloc(
+		outputNeuronCount *
 		sizeof(uint8_t));
 }
 
@@ -259,8 +296,49 @@ void NeuralNet::randomize()
 		neuronCount);
 }
 
+void NeuralNet::randomizeIONeurons() {
+	for(int i = 0; i < inputNeuronCount; i++) {
+		h_inputNeuronIndices[i] = rand() % neuronCount;
+		while(arrayContains(
+				h_inputNeuronIndices,
+				h_inputNeuronIndices[i],
+				i)) {
+
+			h_inputNeuronIndices[i] = rand() % neuronCount;
+		}
+	}
+
+	for(int i = 0; i < inputNeuronCount; i++) {
+		h_outputNeuronIndices[i] = rand() % neuronCount;
+		while(arrayContains(
+				h_inputNeuronIndices,
+				h_inputNeuronIndices[i],
+				i) ||
+			  arrayContains(
+				h_inputNeuronIndices,
+				h_outputNeuronIndices[i],
+				inputNeuronCount)) {
+
+			h_outputNeuronIndices[i] = rand() % neuronCount;
+		}
+	}
+
+	memcpyCPUtoGPU(d_outputNeuronIndices,
+			h_outputNeuronIndices,
+			outputNeuronCount *
+			sizeof(int32_t *));
+
+	memcpyGPUtoCPU(d_outputNeuronIndices,
+		h_outputNeuronIndices,
+		outputNeuronCount *
+		sizeof(int32_t *));
+
+	setSpecialNeurons(this);
+}
+
+
 void NeuralNet::setInputValues(uint8_t * inputs) {
-	memcpy(h_inputNeuronValues, inputs, inputNeurons * sizeof(uint8_t *));
+	memcpy(h_inputNeuronValues, inputs, inputNeuronCount * sizeof(uint8_t *));
 
 	setNetworkInputs(this);
 }
@@ -311,7 +389,7 @@ void NeuralNet::feedforward()
 void NeuralNet::getOutputValues(uint8_t * outputs) {
 	getNetworkOutputs(this);
 
-	memcpy(outputs, h_outputNeuronValues, outputNeurons * sizeof(uint8_t *));
+	memcpy(outputs, h_outputNeuronValues, outputNeuronCount * sizeof(uint8_t *));
 }
 
 void NeuralNet::copyToCPU() {
@@ -354,6 +432,27 @@ void NeuralNet::copyToCPU() {
 		d_forwardConnections,
 		connectionCount *
 		sizeof(int32_t));
+
+
+	memcpyGPUtoCPU(h_inputNeuronIndices,
+		d_inputNeuronIndices,
+		inputNeuronCount *
+		sizeof(int32_t *));
+
+	memcpyGPUtoCPU(h_inputNeuronValues,
+		d_inputNeuronValues,
+		inputNeuronCount *
+		sizeof(uint8_t *));
+
+	memcpyGPUtoCPU(h_outputNeuronIndices,
+		d_outputNeuronIndices,
+		outputNeuronCount *
+		sizeof(int32_t *));
+
+	memcpyGPUtoCPU(h_outputNeuronValues,
+		d_outputNeuronValues,
+		outputNeuronCount *
+		sizeof(uint8_t *));
 }
 
 void NeuralNet::printNetwork() {
@@ -392,8 +491,8 @@ void NeuralNet::saveToFile(FILE * file) {
 	fwrite(&minimumRebalanceActivations, 1, sizeof(uint16_t), file);
 	fwrite(&changeConstant, 1, sizeof(float), file);
 	fwrite(&weightKillValue, 1, sizeof(float), file);
-	fwrite(&inputNeurons, 1, sizeof(int), file);
-	fwrite(&outputNeurons, 1, sizeof(int), file);
+	fwrite(&inputNeuronCount, 1, sizeof(int), file);
+	fwrite(&outputNeuronCount, 1, sizeof(int), file);
 
 	copyToCPU();
 
@@ -430,61 +529,8 @@ void NeuralNet::saveToFile(FILE * file) {
 			sizeof(uint16_t), file);
 }
 
-void NeuralNet::loadFromFile(FILE * file) {
-	fread(&partitionCount, 1, sizeof(int), file);
-	fread(&neuronsPerPartition, 1, sizeof(int), file);
-	fread(&maxConnectionsPerNeuron, 1, sizeof(int), file);
-	fread(&feedforwardCount, 1, sizeof(int), file);
-	fread(&feedsBeforeRebalance, 1, sizeof(int), file);
-	fread(&rebalanceCount, 1, sizeof(int), file);
-	fread(&rebalancesBeforeKilling, 1, sizeof(int), file);
-	fread(&decayRate, 1, sizeof(int), file);
-	fread(&minWeightValue, 1, sizeof(float), file);
-	fread(&maxWeightValue, 1, sizeof(float), file);
-	fread(&minActivationValue, 1, sizeof(float), file);
-	fread(&maxActivationValue, 1, sizeof(float), file);
-	fread(&minimumKillingActivations, 1, sizeof(uint16_t), file);
-	fread(&minimumRebalanceActivations, 1, sizeof(uint16_t), file);
-	fread(&changeConstant, 1, sizeof(float), file);
-	fread(&weightKillValue, 1, sizeof(float), file);
-	fread(&inputNeurons, 1, sizeof(int), file);
-	fread(&outputNeurons, 1, sizeof(int), file);
-
-	allocateAll();
-
-	fread(h_forwardConnections,
-		connectionCount,
-		sizeof(int32_t), file);
-
-	fread(h_connectionWeights,
-		connectionCount,
-		sizeof(float), file);
-
-	fread(h_activationThresholds,
-		neuronCount,
-		sizeof(float), file);
-
-	fread(h_receivingSignal,
-		connectionCount,
-		sizeof(float), file);
-
-	fread(h_excitationLevel,
-		neuronCount,
-		sizeof(float), file);
-
-	fread(h_neuronActivationCountRebalance,
-		neuronCount,
-		sizeof(uint16_t), file);
-
-	fread(h_activations,
-		neuronCount,
-		sizeof(uint8_t), file);
-
-	fread(h_neuronActivationCountKilling,
-		neuronCount,
-		sizeof(uint16_t), file);
-
-	memcpyCPUtoGPU(h_forwardConnections,
+void NeuralNet::copyToGPU() {
+		memcpyCPUtoGPU(h_forwardConnections,
 		d_forwardConnections,
 		connectionCount *
 		sizeof(int32_t));
@@ -528,6 +574,133 @@ void NeuralNet::loadFromFile(FILE * file) {
 		d_forwardConnections,
 		connectionCount *
 		sizeof(int32_t));
+
+
+	memcpyCPUtoGPU(d_inputNeuronIndices,
+		h_inputNeuronIndices,
+		inputNeuronCount *
+		sizeof(int32_t *));
+
+	memcpyCPUtoGPU(d_inputNeuronValues,
+		h_inputNeuronValues,
+		inputNeuronCount *
+		sizeof(uint8_t *));
+
+	memcpyCPUtoGPU(d_outputNeuronIndices,
+		h_outputNeuronIndices,
+		outputNeuronCount *
+		sizeof(int32_t *));
+
+	memcpyCPUtoGPU(d_outputNeuronValues,
+		h_outputNeuronValues,
+		outputNeuronCount *
+		sizeof(uint8_t *));
+}
+
+void NeuralNet::loadFromFile(FILE * file) {
+	fread(&partitionCount, 1, sizeof(int), file);
+	fread(&neuronsPerPartition, 1, sizeof(int), file);
+	fread(&maxConnectionsPerNeuron, 1, sizeof(int), file);
+	fread(&feedforwardCount, 1, sizeof(int), file);
+	fread(&feedsBeforeRebalance, 1, sizeof(int), file);
+	fread(&rebalanceCount, 1, sizeof(int), file);
+	fread(&rebalancesBeforeKilling, 1, sizeof(int), file);
+	fread(&decayRate, 1, sizeof(int), file);
+	fread(&minWeightValue, 1, sizeof(float), file);
+	fread(&maxWeightValue, 1, sizeof(float), file);
+	fread(&minActivationValue, 1, sizeof(float), file);
+	fread(&maxActivationValue, 1, sizeof(float), file);
+	fread(&minimumKillingActivations, 1, sizeof(uint16_t), file);
+	fread(&minimumRebalanceActivations, 1, sizeof(uint16_t), file);
+	fread(&changeConstant, 1, sizeof(float), file);
+	fread(&weightKillValue, 1, sizeof(float), file);
+	fread(&inputNeuronCount, 1, sizeof(int), file);
+	fread(&outputNeuronCount, 1, sizeof(int), file);
+
+	allocateAll();
+
+	fread(h_forwardConnections,
+		connectionCount,
+		sizeof(int32_t),
+		file);
+
+	fread(h_connectionWeights,
+		connectionCount,
+		sizeof(float),
+		file);
+
+	fread(h_activationThresholds,
+		neuronCount,
+		sizeof(float),
+		file);
+
+	fread(h_receivingSignal,
+		connectionCount,
+		sizeof(float), file);
+
+	fread(h_excitationLevel,
+		neuronCount,
+		sizeof(float),
+		file);
+
+	fread(h_neuronActivationCountRebalance,
+		neuronCount,
+		sizeof(uint16_t),
+		file);
+
+	fread(h_activations,
+		neuronCount,
+		sizeof(uint8_t),
+		file);
+
+	fread(h_neuronActivationCountKilling,
+		neuronCount,
+		sizeof(uint16_t),
+		file);
+
+
+	fread(h_inputNeuronIndices,
+		inputNeuronCount,
+		sizeof(int32_t *),
+		file);
+
+	fread(h_inputNeuronValues,
+		inputNeuronCount,
+		sizeof(uint8_t *),
+		file);
+
+	fread(h_outputNeuronIndices,
+		outputNeuronCount,
+		sizeof(int32_t *),
+		file);
+
+	fread(h_outputNeuronValues,
+		outputNeuronCount,
+		sizeof(uint8_t *),
+		file);
+
+
+	fread(d_inputNeuronIndices,
+		inputNeuronCount,
+		sizeof(int32_t *),
+		file);
+
+	fread(d_inputNeuronValues,
+		inputNeuronCount,
+		sizeof(uint8_t *),
+		file);
+
+	fread(d_outputNeuronIndices,
+		outputNeuronCount,
+		sizeof(int32_t *),
+		file);
+
+	fread(d_outputNeuronValues,
+		outputNeuronCount,
+		sizeof(uint8_t *),
+		file);
+
+	copyToGPU();
 }
 
 
@@ -613,11 +786,11 @@ float NeuralNet::getWeightKillValue() {
 }
 
 int NeuralNet::getInputNeuronCount() {
-	return inputNeurons;
+	return inputNeuronCount;
 }
 
 int NeuralNet::getOutputNeuronCount() {
-	return outputNeurons;
+	return outputNeuronCount;
 }
 
 

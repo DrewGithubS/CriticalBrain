@@ -17,7 +17,7 @@ enum {
 const uint32_t THREADSPERBLOCK = 1024;	
 #define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
 
-__device__ uint8_t arrayContains(int32_t * arr, int32_t item, int len);
+__device__ uint8_t d_arrayContains(int32_t * arr, int32_t item, int len);
 
 __device__ int d_genRandomNeuron(
 	curandState * state,
@@ -52,6 +52,19 @@ __global__ void d_randomizeNeurons(
 		activationThresholds[index] = curand_uniform(curandStates + index);
 		activationThresholds[index] *= (maxValue - minValue);
 		activationThresholds[index] += minValue;
+	}
+}
+
+__global__ void d_setSpecialNeurons(
+	int32_t * indices,
+	uint8_t * specialNeurons,
+	int neuronCount,
+	uint8_t neuronType) {
+
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(index < neuronCount) {
+		specialNeurons[indices[index]] = neuronType;
 	}
 }
 
@@ -106,13 +119,11 @@ __global__ void d_ensureUniqueConnections(
 				forwardConnections[index * connectionsPerNeuron + j]
 					== index ||
 				forwardConnections[index * connectionsPerNeuron + j]
-					< inputNeurons ||
-				forwardConnections[index * connectionsPerNeuron + j]
 					== -1 ||
 				specialNeurons[
 					forwardConnections[index * connectionsPerNeuron + j]]
 						== INPUT_NEURON ||
-				arrayContains(
+				d_arrayContains(
 					&forwardConnections[index * connectionsPerNeuron],
 					forwardConnections[index * connectionsPerNeuron + j],
 					j)) {
@@ -417,6 +428,29 @@ void randomizeNeurons(
 		neurons);
 
 	cudaDeviceSynchronize();
+}
+
+void setSpecialNeurons(
+	NeuralNet * net)
+{
+
+	int32_t * inputNeuronIndices = net->getDeviceInputNeuronIndices();
+	int32_t * outputNeuronIndices = net->getDeviceOutputNeuronIndices();
+	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
+	int inputNeuronCount = net->getInputNeuronCount();
+	int outputNeuronCount = net->getOutputNeuronCount();
+
+	d_setSpecialNeurons <<< BlockCount(inputNeuronCount), THREADSPERBLOCK >>> (
+		inputNeuronIndices,
+		specialNeurons,
+		inputNeuronCount,
+		INPUT_NEURON);
+
+	d_setSpecialNeurons <<< BlockCount(outputNeuronCount), THREADSPERBLOCK >>> (
+		outputNeuronIndices,
+		specialNeurons,
+		outputNeuronCount,
+		OUTPUT_NEURON);
 }
 
 void createRandomConnections(
@@ -822,7 +856,7 @@ __device__ int d_genRandomNeuron(
     return newNeuronIndex;
 }
 
-__device__ uint8_t arrayContains(int32_t * arr, int32_t item, int len)
+__device__ uint8_t d_arrayContains(int32_t * arr, int32_t item, int len)
 {
 	for(int i = 0; i < len; i++) {
 		if(arr[i] == item) {

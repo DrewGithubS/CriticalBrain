@@ -28,8 +28,8 @@ private:
 	uint16_t minimumRebalanceActivations;
 	float changeConstant;
 	float weightKillValue;
-	int inputNeurons;
-	int outputNeurons;
+	int inputNeuronCount;
+	int outputNeuronCount;
 
 	int32_t * h_forwardConnections;
 	float * h_connectionWeights;
@@ -70,8 +70,8 @@ public:
 		int partitions,
 		int neuronsPerPartition,
 		int maxConnectionsPerNeuron,
-		int feedsBeforeRebalanceIn,
-		int rebalancesBeforeKillingIn,
+		int feedsBeforeRebalance,
+		int rebalancesBeforeKilling,
 		float decayRate,
 		float minWeightValue,
 		float maxWeightValue,
@@ -82,15 +82,19 @@ public:
 		float changeConstant,
 		float weightKillValue,
 		int inputNeurons,
-		int outputNeurons);
+		int outputNeurons,
+		int32_t * inputNeuronIndices = 0,
+		int32_t * outputNeuronIndices = 0);
 
 	~NeuralNet();
 
 	void randomize();
+	void randomizeIONeurons();
 	void setInputValues(uint8_t * inputs);
 	void feedforward();
 	void getOutputValues(uint8_t * outputs);
 	void copyToCPU();
+	void copyToGPU();
 	void printNetwork();
 	void saveToFile(FILE * file);
 	void setInputs(uint8_t * inputs);
