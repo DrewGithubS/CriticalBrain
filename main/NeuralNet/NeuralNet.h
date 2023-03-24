@@ -72,6 +72,8 @@ public:
 
 	void randomize();
 	void feedforward();
+	void copyToCPU();
+	void printNetwork();
 	void saveToFile(FILE * file);
 };
 

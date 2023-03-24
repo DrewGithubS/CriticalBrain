@@ -45,6 +45,12 @@ NeuralNet::NeuralNet(
 	outputNeurons = outputNeuronsIn;
 
 	allocateAll();
+
+	setupRand(
+		d_randState,
+		rand(),
+		partitionCount,
+		neuronsPerPartition);
 }
 
 NeuralNet::~NeuralNet() {
@@ -134,45 +140,45 @@ void NeuralNet::allocateAll() {
 	// TOTAL SIZE: neuronCount * (61 + 8 * connectionsPerNeuron)
 
 
-	h_forwardConnections = (int32_t *) gpuMemAlloc(
+	h_forwardConnections = (int32_t *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		maxConnectionsPerNeuron *
 		sizeof(int32_t));
 
-	h_connectionWeights = (float *) gpuMemAlloc(
+	h_connectionWeights = (float *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		maxConnectionsPerNeuron *
 		sizeof(float));
 
-	h_activationThresholds = (float *) gpuMemAlloc(
+	h_activationThresholds = (float *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		sizeof(float));
 
-	h_receivingSignal = (float *) gpuMemAlloc(
+	h_receivingSignal = (float *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		maxConnectionsPerNeuron *
 		sizeof(float));
 
-	h_excitationLevel = (float *) gpuMemAlloc(
+	h_excitationLevel = (float *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		sizeof(float));
 
-	h_neuronActivationCountRebalance = (uint16_t *) gpuMemAlloc(
+	h_neuronActivationCountRebalance = (uint16_t *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		sizeof(uint16_t));
 
-	h_activations = (uint8_t *) gpuMemAlloc(
+	h_activations = (uint8_t *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		sizeof(uint8_t));
 
-	h_neuronActivationCountKilling = (uint16_t *) gpuMemAlloc(
+	h_neuronActivationCountKilling = (uint16_t *) malloc(
 		partitionCount *
 		neuronsPerPartition *
 		sizeof(uint16_t));
@@ -180,6 +186,7 @@ void NeuralNet::allocateAll() {
 
 void NeuralNet::randomize()
 {
+	printf("Randomizing neurons...\n"); fflush(stdout);
 	randomizeNeurons(
 		d_randState,
 		d_activationThresholds,
@@ -188,6 +195,7 @@ void NeuralNet::randomize()
 		partitionCount,
 		neuronsPerPartition);
 
+	printf("Randomizing conenctions...\n"); fflush(stdout);
 	createRandomConnections(
 		d_randState,
 		minWeightValue,
@@ -201,6 +209,7 @@ void NeuralNet::randomize()
 		maxConnectionsPerNeuron,
 		inputNeurons);
 
+	printf("Normalizing conenctions...\n"); fflush(stdout);
 	normalizeConnections(
 		d_forwardConnections,
 		d_connectionWeights,
@@ -306,38 +315,13 @@ void NeuralNet::feedforward()
 	}
 }
 
-void NeuralNet::saveToFile(FILE * file) {
-	fwrite(&partitionCount, 1, sizeof(int), file);
-	fwrite(&neuronsPerPartition, 1, sizeof(int), file);
-	fwrite(&maxConnectionsPerNeuron, 1, sizeof(int), file);
-	fwrite(&feedforwardCount, 1, sizeof(int), file);
-	fwrite(&feedsBeforeRebalance, 1, sizeof(int), file);
-	fwrite(&rebalanceCount, 1, sizeof(int), file);
-	fwrite(&rebalancesBeforeKilling, 1, sizeof(int), file);
-	fwrite(&decayRate, 1, sizeof(int), file);
-	fwrite(&minWeightValue, 1, sizeof(float), file);
-	fwrite(&maxWeightValue, 1, sizeof(float), file);
-	fwrite(&minActivationValue, 1, sizeof(float), file);
-	fwrite(&maxActivationValue, 1, sizeof(float), file);
-	fwrite(&minimumActivations, 1, sizeof(uint16_t), file);
-	fwrite(&changeConstant, 1, sizeof(float), file);
-	fwrite(&weightKillValue, 1, sizeof(float), file);
-	fwrite(&inputNeurons, 1, sizeof(int), file);
-	fwrite(&outputNeurons, 1, sizeof(int), file);
-
+void NeuralNet::copyToCPU() {
 	memcpyGPUtoCPU(h_forwardConnections, 
 		d_forwardConnections,
 		partitionCount *
 			neuronsPerPartition *
 			maxConnectionsPerNeuron *
 			sizeof(int32_t));
-
-	memcpyGPUtoCPU(h_forwardConnections,
-		d_forwardConnections,
-		partitionCount *
-		neuronsPerPartition *
-		maxConnectionsPerNeuron *
-		sizeof(int32_t));
 
 	memcpyGPUtoCPU(h_connectionWeights,
 		d_connectionWeights,
@@ -376,13 +360,53 @@ void NeuralNet::saveToFile(FILE * file) {
 		neuronsPerPartition *
 		sizeof(uint16_t));
 
-
 	memcpyGPUtoCPU(h_forwardConnections, 
 		d_forwardConnections,
 		partitionCount *
 			neuronsPerPartition *
 			maxConnectionsPerNeuron *
 			sizeof(int32_t));
+}
+
+void NeuralNet::printNetwork() {
+	copyToCPU();
+
+	for(int i = 0; i < neuronsPerPartition * partitionCount; i++) {
+		printf("Neuron %d:\n", i); fflush(stdout);
+		printf("\ti: %d\n", i); fflush(stdout);
+		printf("\tExcitation Level: %f\n", h_excitationLevel[i]); fflush(stdout);
+		printf("\tActivation Threshold: %f\n", h_activationThresholds[i]); fflush(stdout);
+		printf("\tActivated: %d\n", h_activations[i]); fflush(stdout);
+		printf("\tConnections:\n"); fflush(stdout);
+		for(int j = 0; j < maxConnectionsPerNeuron; j++) {
+			printf("\t\tConnection : %d\n", h_forwardConnections[
+				i * maxConnectionsPerNeuron + j]); fflush(stdout);
+			printf("\t\tWeight : %f\n", h_connectionWeights[
+				i * maxConnectionsPerNeuron + j]); fflush(stdout);
+		}
+	}
+}
+
+void NeuralNet::saveToFile(FILE * file) {
+	fwrite(&partitionCount, 1, sizeof(int), file);
+	fwrite(&neuronsPerPartition, 1, sizeof(int), file);
+	fwrite(&maxConnectionsPerNeuron, 1, sizeof(int), file);
+	fwrite(&feedforwardCount, 1, sizeof(int), file);
+	fwrite(&feedsBeforeRebalance, 1, sizeof(int), file);
+	fwrite(&rebalanceCount, 1, sizeof(int), file);
+	fwrite(&rebalancesBeforeKilling, 1, sizeof(int), file);
+	fwrite(&decayRate, 1, sizeof(int), file);
+	fwrite(&minWeightValue, 1, sizeof(float), file);
+	fwrite(&maxWeightValue, 1, sizeof(float), file);
+	fwrite(&minActivationValue, 1, sizeof(float), file);
+	fwrite(&maxActivationValue, 1, sizeof(float), file);
+	fwrite(&minimumActivations, 1, sizeof(uint16_t), file);
+	fwrite(&changeConstant, 1, sizeof(float), file);
+	fwrite(&weightKillValue, 1, sizeof(float), file);
+	fwrite(&inputNeurons, 1, sizeof(int), file);
+	fwrite(&outputNeurons, 1, sizeof(int), file);
+
+	copyToCPU();
 
 	fwrite(h_forwardConnections,
 			partitionCount *

@@ -1,14 +1,36 @@
+#include <time.h>
+#include <unistd.h>
+
 #include "renderMain.h"
 #include "organism.h"
 #include "NeuralNet.h"
 
 int main() {
+	srand(time(0));
+
 	Organism organism = Organism(400, 400);
 
+	// NeuralNet * net = new NeuralNet(
+	// 	8,
+	// 	6000,
+	// 	120,
+	// 	2500,
+	// 	50,
+	// 	0.8,
+	// 	0,
+	// 	1,
+	// 	0.7,
+	// 	1.4,
+	// 	1000,
+	// 	0.01,
+	// 	0.01,
+	// 	10,
+	// 	10);
+
 	NeuralNet * net = new NeuralNet(
-		8,
-		6000,
-		120,
+		1,
+		4,
+		1,
 		2500,
 		25,
 		0.8,
@@ -19,12 +41,15 @@ int main() {
 		1000,
 		0.01,
 		0.01,
-		10,
-		10);
+		1,
+		1);
 
-	RenderMain render = RenderMain(&organism);
+	net->randomize();
+	net->printNetwork();
 
-	render.render();
+	// RenderMain render = RenderMain(&organism);
+
+	// render.render();
 
 	delete net;
 }

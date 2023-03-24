@@ -4,6 +4,12 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+void setupRand(
+	curandState * curandStates,
+	int seed,
+	int16_t partitions,
+	int neuronsPerPartition);
+
 void randomizeNeurons(
 	curandState * curandStates,
 	float * activationThresholds,

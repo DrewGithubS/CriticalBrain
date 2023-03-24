@@ -4,6 +4,7 @@
 
 
 #include <cstdint>
+#include <cstdio>
 
 #include "NeuralNetCUDA.h"
 #include "GPUFunctions.h"
@@ -39,12 +40,13 @@ void ensureUniqueConnections(
 
 __global__ void d_setupRand(
 	curandState * state,
-	int neurons)
+	int neurons,
+	int seed)
 {
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 	
 	if(index < neurons) {
-		curand_init(1234, index, 0, &state[index]);
+		curand_init(seed, index, 0, &state[index]);
 	}
 }
 
@@ -60,7 +62,7 @@ __global__ void d_randomizeNeurons(
 
 	if(index < neurons) {
 		activationThresholds[index] = curand_uniform(curandStates + index);
-		activationThresholds[index] *= (maxValue - minValue + 0.999999);
+		activationThresholds[index] *= (maxValue - minValue);
 		activationThresholds[index] += minValue;
 	}
 }
@@ -88,7 +90,7 @@ __global__ void d_createRandomConnections(
 			partitions);
 
 		float weight = curand_uniform(curandStates + index);
-	    weight *= (maxWeight - minWeight + 0.999999);
+	    weight *= (maxWeight - minWeight);
 	    weight += minWeight;
 		
 	    connectionWeights[index] = weight;
@@ -178,6 +180,10 @@ __global__ void d_calculateActivations(
 	if(index < neurons) {
 		activations[index] =
 			excitationLevel[index] > activationThresholds[index];
+
+		excitationLevel[index] = 
+			excitationLevel[index] > activationThresholds[index] ? 
+				0 : excitationLevel[index];
 
 		activationCount1[index] +=
 			excitationLevel[index] > activationThresholds[index];
@@ -316,6 +322,20 @@ __global__ void d_rebalanceConnections(
 	}
 }
 
+void setupRand(
+	curandState * curandStates,
+	int seed,
+	int16_t partitions,
+	int neuronsPerPartition) {
+
+	int neurons = partitions * neuronsPerPartition;
+
+	d_setupRand <<< BlockCount(neurons), THREADSPERBLOCK >>> (
+		curandStates,
+		neurons,
+		seed);
+}
+
 void randomizeNeurons(
 	curandState * curandStates,
 	float * activationThresholds,
@@ -325,10 +345,6 @@ void randomizeNeurons(
 	int neuronsPerPartition)
 {
 	int neurons = partitions * neuronsPerPartition;
-
-	d_setupRand <<< BlockCount(neurons), THREADSPERBLOCK >>> (
-		curandStates,
-		neurons);
 
 	d_randomizeNeurons <<< BlockCount(neurons), THREADSPERBLOCK >>> (
 		curandStates,
@@ -352,11 +368,11 @@ void createRandomConnections(
 	int connectionsPerNeuron,
 	int inputNeurons)
 {
-	srand(time(0));
-
 	int neurons = partitionCount * neuronsPerPartition;
 	int connections = neurons * connectionsPerNeuron;
 
+
+	printf("Calling GPU function...\n"); fflush(stdout);
 	d_createRandomConnections <<< 
 		BlockCount(connections),
 		THREADSPERBLOCK >>> (
@@ -371,6 +387,7 @@ void createRandomConnections(
 			connectionsPerNeuron,
 			connections);
 
+	printf("Ensuring unique connections...\n");
 	ensureUniqueConnections(
 		d_forwardConnections,
 		h_forwardConnections,
@@ -631,17 +648,17 @@ __device__ int d_genRandomNeuron(
 	float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
 
 	float x_f = curand_uniform(state + index);
-    x_f *= (maxValueX - minValueX + 0.999999);
+    x_f *= (maxValueX - minValueX);
     x_f += minValueX;
     int dx = (int) truncf(x_f);
 
     float y_f = curand_uniform(state + index);
-    y_f *= (maxValueY - minValueY + 0.999999);
+    y_f *= (maxValueY - minValueY);
     y_f += maxValueY;
     int dy = (int) truncf(y_f);
 
     float z_f = curand_uniform(state + index);
-    z_f *= (maxValueZ - minValueZ + 0.999999);
+    z_f *= (maxValueZ - minValueZ);
     z_f += maxValueZ;
     int dz = (int) truncf(z_f);
 
@@ -656,7 +673,7 @@ __device__ int d_genRandomNeuron(
 	z_f = curand_uniform(state + index);
 	// Subtracting one here so that I can guarantee this connection
 	// Doesn't point at itself
-    z_f *= (neuronsPerPartition - 1 + 0.999999);
+    z_f *= (neuronsPerPartition - 1);
     z_f += 0;
     newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
     // Guarantees the connection isn't pointing at itself.
@@ -730,6 +747,7 @@ void ensureUniqueConnections(
 	int neurons = partitionCount * neuronsPerPartition;
 	int connections = neurons * connectionsPerNeuron;
 
+	printf("Copying to CPU...\n"); fflush(stdout);
 	memcpyGPUtoCPU(h_forwardConnections, 
 				   d_forwardConnections,
 				   connections * sizeof(int32_t));
@@ -737,7 +755,9 @@ void ensureUniqueConnections(
 	// This is probably very slow. I need a way to optimize this
 	// to work in parallel or work faster.
 	for(int i = 0; i < neurons; i++) {
+		printf("Randomizing for %d neuron...\n", i); fflush(stdout);
 		for(int j = 0; j < connectionsPerNeuron; j++) {
+			printf("Randomizing for %d connection...\n", j); fflush(stdout);
 			while(h_forwardConnections[i * connectionsPerNeuron + j] < inputNeurons ||
 					h_forwardConnections[i * connectionsPerNeuron + j] == -1 ||
 					arrayContains(
