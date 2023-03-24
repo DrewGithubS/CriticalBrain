@@ -13,6 +13,8 @@ private:
 	int partitionCount;
 	int neuronsPerPartition;
 	int maxConnectionsPerNeuron;
+	int neuronCount;
+	int connectionCount;
 	int feedforwardCount;
 	int feedsBeforeRebalance;
 	int rebalanceCount;
@@ -75,6 +77,47 @@ public:
 	void copyToCPU();
 	void printNetwork();
 	void saveToFile(FILE * file);
+	void setInputs(uint8_t * inputs);
+	void getoutputs(uint8_t * outputs);
+
+	void getPartitions();
+	void getPartitionCount();
+	void getNeuronsPerPartition();
+	void getMaxConnectionsPerNeuron();
+	void getNeuronCount();
+	void getConnectionCount();
+	void getFeedforwardCount();
+	void getFeedsBeforeRebalance();
+	void getRebalanceCount();
+	void getRebalancesBeforeKilling();
+	void getDecayRate();
+	void getMinWeightValue();
+	void getMaxWeightValue();
+	void getMinActivationValue();
+	void getMaxActivationValue();
+	void getMinimumActivations();
+	void getChangeConstant();
+	void getWeightKillValue();
+	void getInputNeurons();
+	void getOutputNeurons();
+
+	void getHostForwardConnections();
+	void getHostConnectionWeights();
+	void getHostActivationThresholds();
+	void getHostReceivingSignal();
+	void getHostExcitationLevel();
+	void getHostActivations();
+	void getHostNeuronActivationCountRebalance();
+	void gethHostNeuronActivationCountKilling();
+
+	void getDeviceRandState();
+	void getDeviceForwardConnections();
+	void getDeviceConnectionWeights();
+	void getDeviceActivationThresholds();
+	void getDeviceExcitationLevel();
+	void getDeviceActivations();
+	void getDeviceNeuronActivationCountRebalance();
+	void getDeviceNeuronActivationCountKilling();
 };
 
 #endif

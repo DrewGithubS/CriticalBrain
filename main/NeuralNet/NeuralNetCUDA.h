@@ -5,107 +5,37 @@
 #include <curand_kernel.h>
 
 void setupRand(
-	curandState * curandStates,
-	int seed,
-	int16_t partitions,
-	int neuronsPerPartition);
+	NeuralNet * net);
 
 void randomizeNeurons(
-	curandState * curandStates,
-	float * activationThresholds,
-	float minValue,
-	float maxValue,
-	int16_t partitions,
-	int neuronsPerPartition);
+	NeuralNet * net);
 
 void createRandomConnections(
-	curandState * curandStates,
-	float minWeight,
-	float maxWeight,
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons);
+	NeuralNet * net);
 
 void normalizeConnections(
-	int32_t * forwardConnections,
-	float * connectionWeights,
-	float * activationThresholds,
-	int neurons,
-	int connectionsPerNeuron,
-	float decayRate);
+	NeuralNet * net);
 
 void mainFeedforward(
-	float * excitationLevel,
-	uint8_t * activations,
-	int32_t * forwardConnections,
-	float * connectionWeights,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int outputNeurons);
+	NeuralNet * net);
 
 void doExcitationDecay(
-	float * excitationLevel,
-	float decayRate,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron);
+	NeuralNet * net);
 
 void calculateActivations(
-	float * excitationLevel,
-	float * activationThresholds,
-	uint8_t * activations,
-	uint16_t * activationCount1,
-	uint16_t * activationCount2,
-	int partitionCount,
-	int neuronsPerPartition);
+	NeuralNet * net);
 
 void determineKilledNeurons(
-	uint16_t * activationCount,
-	uint8_t * activations,
-	uint16_t minimumActivations,
-	int partitionCount,
-	int neuronsPerPartition);
+	NeuralNet * net);
 
 void randomizeDeadNeurons(
-	curandState * curandStates,
-	float minWeight,
-	float maxWeight,
-	float minActivation,
-	float maxActivation,
-	float * activationThresholds,
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	uint8_t * activations,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons);
+	NeuralNet * net);
 
 void zeroizeActivationCounts(
 	uint16_t * activationCount,
-	int partitionCount,
-	int neuronsPerPartition);
+	int count);
 
 void rebalanceConnections(
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	uint16_t * activationCount,
-	uint16_t minimumActivations,
-	float changeConstant,
-	float minimumWeightValue,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons);
+	NeuralNet * net);
 
 #endif

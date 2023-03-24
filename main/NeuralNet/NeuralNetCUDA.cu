@@ -323,12 +323,11 @@ __global__ void d_rebalanceConnections(
 }
 
 void setupRand(
-	curandState * curandStates,
-	int seed,
-	int16_t partitions,
-	int neuronsPerPartition) {
+	NeuralNet * net,
+	int seed) {
 
-	int neurons = partitions * neuronsPerPartition;
+	curandState * curandStates = net->getDeviceRandState();
+	int neurons = net->getNeuronCount();
 
 	d_setupRand <<< BlockCount(neurons), THREADSPERBLOCK >>> (
 		curandStates,
@@ -337,39 +336,41 @@ void setupRand(
 }
 
 void randomizeNeurons(
-	curandState * curandStates,
-	float * activationThresholds,
-	float minValue,
-	float maxValue,
-	int16_t partitions,
-	int neuronsPerPartition)
+	NeuralNet * net)
 {
-	int neurons = partitions * neuronsPerPartition;
+	curandState * curandStates = net->getDeviceRandState();
+	float * activationThresholds = net->getDeviceActivationThresholds();
+	float minActivation = net->getMinActivationValue();
+	float maxActivation = net->getMaxActivationValue();
+	int16_t partitions = net->getPartitions();
+	int neurons = net->getNeuronCount();
 
 	d_randomizeNeurons <<< BlockCount(neurons), THREADSPERBLOCK >>> (
 		curandStates,
 		activationThresholds,
-		minValue,
-		maxValue,
+		minActivation,
+		maxActivation,
 		partitions,
 		neurons);
 }
 
 void createRandomConnections(
-	curandState * curandStates,
-	float minWeight,
-	float maxWeight,
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons)
+	NeuralNet * net)
 {
-	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * connectionsPerNeuron;
+
+	curandState * curandStates = net->getDeviceRandState();
+	float minWeight = net->getMinWeightValue();
+	float maxWeight = net->getMaxWeightValue();
+	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
+	int32_t * h_forwardConnections = net->getHostForwardConnections();
+	float * d_connectionWeights = net->getDeviceConnectionWeights();
+	int partitions = net->getPartitions();
+	int partitionCount = net->getPartitionCount();
+	int neuronsPerPartition = net->getNeuronsPerPartition();
+	int neurons = net->getNeuronCount();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
+	int connections = net->getConnectionCount();
+	int inputNeurons = net->getInputNeurons();
 
 
 	printf("Calling GPU function...\n"); fflush(stdout);
@@ -380,7 +381,7 @@ void createRandomConnections(
 			minWeight,
 			maxWeight,
 			d_forwardConnections,
-			connectionWeights,
+			d_connectionWeights,
 			partitions,
 			neuronsPerPartition,
 			neurons,
@@ -400,13 +401,15 @@ void createRandomConnections(
 }
 
 void normalizeConnections(
-	int32_t * forwardConnections,
-	float * connectionWeights,
-	float * activationThresholds,
-	int neurons,
-	int connectionsPerNeuron,
-	float decayRate)
+	NeuralNet * net)
 {
+	int32_t * forwardConnections = net->getDeviceForwardConnections();
+	float * connectionWeights = net->getDeviceConnectionWeights();
+	float * activationThresholds = net->getDeviceActivationThresholds();
+	int neurons = net->getNeuronCount();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
+	float decayRate = net->getDecayRate();
+
 	d_normalizeNeurons <<< 
 		BlockCount(neurons),
 		THREADSPERBLOCK >>> (
@@ -419,17 +422,15 @@ void normalizeConnections(
 }
 
 void mainFeedforward(
-	float * excitationLevel,
-	uint8_t * activations,
-	int32_t * forwardConnections,
-	float * connectionWeights,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int outputNeurons)
+	NeuralNet * net)
 {
-	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * connectionsPerNeuron;
+	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	int32_t * forwardConnections = net->getDeviceForwardConnections();
+	float * connectionWeights = net->getDeviceConnectionWeights();
+	int connections = net->getConnectionCount();
+	int neurons = net->getNeuronCount();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
+	int outputNeurons = net->getOutputNeurons();
 
 	d_feedForward <<< 
 		BlockCount(connections),
@@ -445,14 +446,12 @@ void mainFeedforward(
 }
 
 void doExcitationDecay(
-	float * excitationLevel,
-	float decayRate,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron)
+	NeuralNet * net)
 {
-	int neurons = partitionCount * neuronsPerPartition;
-	int connections = neurons * connectionsPerNeuron;
+	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	float decayRate = net->getDecayRate();
+	int neurons = net->getNeuronCount();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
 
 	d_doExcitationDecay <<< 
 		BlockCount(connections),
@@ -465,15 +464,14 @@ void doExcitationDecay(
 }
 
 void calculateActivations(
-	float * excitationLevel,
-	float * activationThresholds,
-	uint8_t * activations,
-	uint16_t * activationCount1,
-	uint16_t * activationCount2,
-	int partitionCount,
-	int neuronsPerPartition)
+	NeuralNet * net)
 {
-	int neurons = partitionCount * neuronsPerPartition;
+	int32_t * excitationLevel = net->getDeviceExcitationLevel();
+	float * activationThresholds = net->getDeviceActivationThresholds();
+	uint8_t * activations = net->getDeviceActivations();
+	uint8_t * activationCount1 = net->getHostNeuronActivationCountRebalance();
+	uint8_t * activationCount2 = net->gethHostNeuronActivationCountKilling();
+	int neurons = net->getNeuronCount();
 
 	d_calculateActivations <<< 
 		BlockCount(neurons),
@@ -487,13 +485,12 @@ void calculateActivations(
 }
 
 void determineKilledNeurons(
-	uint16_t * activationCount,
-	uint8_t * activations,
-	uint16_t minimumActivations,
-	int partitionCount,
-	int neuronsPerPartition)
+	NeuralNet * net)
 {
-	int neurons = partitionCount * neuronsPerPartition;
+	uint8_t * activationCount = net->gethHostNeuronActivationCountKilling();
+	uint8_t * activations = net->getDeviceActivations();
+	uint16_t minimumKillingActivations = net->getMinimumKillingActivations();
+	int neurons = net->getNeuronCount();
 
 	d_determineKilledNeurons <<< 
 		BlockCount(neurons),
@@ -505,22 +502,25 @@ void determineKilledNeurons(
 }
 
 void randomizeDeadNeurons(
-	curandState * curandStates,
-	float minWeight,
-	float maxWeight,
-	float minActivation,
-	float maxActivation,
-	float * activationThresholds,
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	uint8_t * activations,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons)
+	NeuralNet * net)
 {
+
+	curandState * curandStates = net->getDeviceRandState();
+	float minWeight = net->getMinWeightValue();
+	float maxWeight = net->getMaxWeightValue();
+	float minActivation = net->getMinActivationValue();
+	float maxActivation = net->getMaxActivationValue();
+	float * activationThresholds = net->getDeviceActivationThresholds();
+	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
+	int32_t * h_forwardConnections = net->getHostForwardConnections();
+	float * connectionWeights = net->getDeviceConnectionWeights();
+	uint8_t * activations = net->getDeviceActivations();
+	int partitions = net->getPartitions();
+	int neuronsPerPartition = net->getNeuronsPerPartition();
+	int neurons = net->getNeuronCount();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
+	int connections = net->getConnectionCount();
+
 	int neurons = partitionCount * neuronsPerPartition;
 	int connections = neurons * connectionsPerNeuron;
 
@@ -554,32 +554,31 @@ void randomizeDeadNeurons(
 
 void zeroizeActivationCounts(
 	uint16_t * activationCount,
-	int partitionCount,
-	int neuronsPerPartition)
+	int count)
 {
-	int neurons = partitionCount * neuronsPerPartition;
-
 	d_zeroizeActivationCounts <<< 
-		BlockCount(neurons),
+		BlockCount(count),
 		THREADSPERBLOCK >>> (
 			activationCount,
-			neurons);
+			count);
 }
 
 void rebalanceConnections(
-	int32_t * d_forwardConnections,
-	int32_t * h_forwardConnections,
-	float * connectionWeights,
-	uint16_t * activationCount,
-	uint16_t minimumActivations,
-	float changeConstant,
-	float minimumWeightValue,
-	int partitions,
-	int partitionCount,
-	int neuronsPerPartition,
-	int connectionsPerNeuron,
-	int inputNeurons)
+	NeuralNet * net)
 {
+	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
+	int32_t * h_forwardConnections = net->getHostForwardConnections();
+	float * connectionWeights = net->getDeviceConnectionWeights();
+	uint8_t * activationCount = net->getHostNeuronActivationCountRebalance();
+	uint16_t minimumRebalanceActivations =
+		net->getMinimumRebalanceActivations();
+	float changeConstant = net->getChangeConstant();
+	float weightKillValue = net->getWeightKillValue();
+	int partitions = net->getPartitions();
+	int partitionCount = net->getPartitionCount();
+	int neuronsPerPartition = net->getNeuronsPerPartition();
+	int connectionsPerNeuron = net->getMaxConnectionsPerNeuron();
+	int inputNeurons = net->getInputNeurons();
 	int neurons = partitionCount * neuronsPerPartition;
 
 	d_rebalanceConnections <<< 

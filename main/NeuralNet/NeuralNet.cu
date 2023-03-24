@@ -77,6 +77,9 @@ NeuralNet::~NeuralNet() {
 void NeuralNet::allocateAll() {
 	partitionCount = partitions * partitions * partitions;
 	feedforwardCount = 0;
+	rebalanceCount = 0;
+	neuronCount = partitionCount * neuronsPerPartition;
+	connectionCount = neuronCount * maxConnectionsPerNeuron;
 
 	// Size: 48 * neuronCount
 	// Used for random number generation on the GPU
@@ -188,127 +191,62 @@ void NeuralNet::randomize()
 {
 	printf("Randomizing neurons...\n"); fflush(stdout);
 	randomizeNeurons(
-		d_randState,
-		d_activationThresholds,
-		minActivationValue,
-		maxActivationValue,
-		partitionCount,
-		neuronsPerPartition);
+		this);
 
 	printf("Randomizing conenctions...\n"); fflush(stdout);
 	createRandomConnections(
-		d_randState,
-		minWeightValue,
-		maxWeightValue,
-		d_forwardConnections,
-		h_forwardConnections,
-		d_connectionWeights,
-		partitions,
-		partitionCount,
-		neuronsPerPartition,
-		maxConnectionsPerNeuron,
-		inputNeurons);
+		this);
 
 	printf("Normalizing conenctions...\n"); fflush(stdout);
 	normalizeConnections(
-		d_forwardConnections,
-		d_connectionWeights,
-		d_activationThresholds,
-		partitionCount * neuronsPerPartition,
-		maxConnectionsPerNeuron,
-		decayRate);
+		this);
+
+	zeroizeActivationCounts(
+		d_neuronActivationCountKilling,
+		neuronCount);
+
+	zeroizeActivationCounts(
+		d_neuronActivationCountRebalance,
+		neuronCount);
 }
 
 void NeuralNet::feedforward()
 {
 	mainFeedforward(
-		d_excitationLevel,
-		d_activations,
-		d_forwardConnections,
-		d_connectionWeights,
-		partitionCount,
-		neuronsPerPartition,
-		maxConnectionsPerNeuron,
-		outputNeurons);
+		this);
 
 	doExcitationDecay(
-		d_excitationLevel,
-		decayRate,
-		partitionCount,
-		neuronsPerPartition,
-		maxConnectionsPerNeuron);
+		this);
 
 	calculateActivations(
-		d_excitationLevel,
-		d_activationThresholds,
-		d_activations,
-		d_neuronActivationCountRebalance,
-		d_neuronActivationCountKilling,
-		partitionCount,
-		maxConnectionsPerNeuron);
+		this);
 	
 	feedforwardCount++;
 
 	if(feedforwardCount == feedsBeforeRebalance &&
 			rebalanceCount == rebalancesBeforeKilling) {
 		determineKilledNeurons(
-			d_neuronActivationCountKilling,
-			d_activations,
-			0, // TODO: This needs a real value
-			partitionCount,
-			neuronsPerPartition);
+			this);
 
 		randomizeDeadNeurons(
-			d_randState,
-			minWeightValue,
-			maxWeightValue,
-			minActivationValue,
-			maxActivationValue,
-			d_activationThresholds,
-			d_forwardConnections,
-			h_forwardConnections,
-			d_connectionWeights,
-			d_activations,
-			partitions,
-			partitionCount,
-			neuronsPerPartition,
-			maxConnectionsPerNeuron,
-			inputNeurons);
+			this);
 
 		zeroizeActivationCounts(
 			d_neuronActivationCountKilling,
-			partitionCount,
-			neuronsPerPartition);
+			neuronCount);
 
 		normalizeConnections(
-			d_forwardConnections,
-			d_connectionWeights,
-			d_activationThresholds,
-			partitionCount * neuronsPerPartition,
-			maxConnectionsPerNeuron,
-			decayRate);
+			this);
 
 		feedforwardCount = 0;
 		rebalanceCount = 0;
 	} else if(feedforwardCount == feedsBeforeRebalance) {
 		rebalanceConnections(
-			d_forwardConnections,
-			h_forwardConnections,
-			d_connectionWeights,
-			d_neuronActivationCountRebalance,
-			minimumActivations, // TODO: put a real value here
-			changeConstant, // TODO: Make these parts of the NN.
-			weightKillValue,
-			partitions,
-			partitionCount,
-			neuronsPerPartition,
-			maxConnectionsPerNeuron,
-			inputNeurons);
+			this);
 
 		zeroizeActivationCounts(
 			d_neuronActivationCountRebalance,
-			partitionCount,
-			neuronsPerPartition);
+			neuronCount);
 
 		rebalanceCount++;
 		feedforwardCount = 0;
@@ -573,4 +511,156 @@ void NeuralNet::loadFromFile(FILE * file) {
 			neuronsPerPartition *
 			maxConnectionsPerNeuron *
 			sizeof(int32_t));
+}
+
+
+
+
+
+/********************************** GETTERS *********************************/
+
+void NeuralNet::getPartitions() {
+	return partitions;
+}
+
+void NeuralNet::getPartitionCount() {
+	return partitionCount;
+}
+
+void NeuralNet::getNeuronsPerPartition() {
+	return neuronsPerPartition;
+}
+
+void NeuralNet::getMaxConnectionsPerNeuron() {
+	return maxConnectionsPerNeuron;
+}
+
+void NeuralNet::getNeuronCount() {
+	return neuronCount;
+}
+
+void NeuralNet::getConnectionCount() {
+	return connectionCount;
+}
+
+void NeuralNet::getFeedforwardCount() {
+	return feedforwardCount;
+}
+
+void NeuralNet::getFeedsBeforeRebalance() {
+	return feedsBeforeRebalance;
+}
+
+void NeuralNet::getRebalanceCount() {
+	return rebalanceCount;
+}
+
+void NeuralNet::getRebalancesBeforeKilling() {
+	return rebalancesBeforeKilling;
+}
+
+void NeuralNet::getDecayRate() {
+	return decayRate;
+}
+
+void NeuralNet::getMinWeightValue() {
+	return minWeightValue;
+}
+
+void NeuralNet::getMaxWeightValue() {
+	return maxWeightValue;
+}
+
+void NeuralNet::getMinActivationValue() {
+	return minActivationValue;
+}
+
+void NeuralNet::getMaxActivationValue() {
+	return maxActivationValue;
+}
+
+void NeuralNet::getMinimumActivations() {
+	return minimumActivations;
+}
+
+void NeuralNet::getChangeConstant() {
+	return changeConstant;
+}
+
+void NeuralNet::getWeightKillValue() {
+	return weightKillValue;
+}
+
+void NeuralNet::getInputNeurons() {
+	return inputNeurons;
+}
+
+void NeuralNet::getOutputNeurons() {
+	return outputNeurons;
+}
+
+
+void NeuralNet::getHostForwardConnections() {
+	return h_forwardConnections;
+}
+
+void NeuralNet::getHostConnectionWeights() {
+	return h_connectionWeights;
+}
+
+void NeuralNet::getHostActivationThresholds() {
+	return h_activationThresholds;
+}
+
+void NeuralNet::getHostReceivingSignal() {
+	return h_receivingSignal;
+}
+
+void NeuralNet::getHostExcitationLevel() {
+	return h_excitationLevel;
+}
+
+void NeuralNet::getHostActivations() {
+	return h_activations;
+}
+
+void NeuralNet::getHostNeuronActivationCountRebalance() {
+	return h_neuronActivationCountRebalance;
+}
+
+void NeuralNet::gethHostNeuronActivationCountKilling() {
+	return h_neuronActivationCountKilling;
+}
+
+
+void getDeviceRandState() {
+	return d_randState;
+}
+
+void getDeviceForwardConnections() {
+	return d_forwardConnections;
+}
+
+void getDeviceConnectionWeights() {
+	return d_connectionWeights;
+}
+
+void getDeviceActivationThresholds() {
+	return d_activationThresholds;
+}
+
+void getDeviceExcitationLevel() {
+	return d_excitationLevel;
+}
+
+void getDeviceActivations() {
+	return d_activations;
+}
+
+void getDeviceNeuronActivationCountRebalance() {
+	return d_neuronActivationCountRebalance;
+}
+
+void getDeviceNeuronActivationCountKilling() {
+	return d_neuronActivationCountKilling;
 }
