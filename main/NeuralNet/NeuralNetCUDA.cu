@@ -372,24 +372,24 @@ __global__ void d_rebalanceConnections(
 			sum += (float) activationCount[neuronIndex];
 		}
 
-		for(int i = 0; i < connectionsPerNeuron; i++) {
-			connectionWeights[connectionBegin + i] += 
-				connectionsPerNeuron * 
-				( (float) (activationCount[i]) - 
-					(sum / (float) connectionsPerNeuron) )
-						/ (sum);
-		}
+		// for(int i = 0; i < connectionsPerNeuron; i++) {
+		// 	connectionWeights[connectionBegin + i] += 
+		// 		connectionsPerNeuron * 
+		// 		( (float) (activationCount[i]) - 
+		// 			(sum / (float) connectionsPerNeuron) )
+		// 				/ (sum);
+		// }
 
-		for(int i = 0; i < connectionsPerNeuron; i++) {
-			if(
-			activationCount[forwardConnections[connectionBegin + i]] <
-				minimumActivations || 
-			fabs(connectionWeights[connectionBegin + i]) <
-				minimumWeightValue) {
+	// 	for(int i = 0; i < connectionsPerNeuron; i++) {
+	// 		if(
+	// 		activationCount[forwardConnections[connectionBegin + i]] <
+	// 			minimumActivations || 
+	// 		fabs(connectionWeights[connectionBegin + i]) <
+	// 			minimumWeightValue) {
 
-				forwardConnections[connectionBegin + i] = -1;
-			}
-		}
+	// 			forwardConnections[connectionBegin + i] = -1;
+	// 		}
+	// 	}
 	}
 }
 
@@ -737,7 +737,7 @@ void rebalanceConnections(
 	int32_t * d_forwardConnections = net->getDeviceForwardConnections();
 	int32_t * h_forwardConnections = net->getHostForwardConnections();
 	float * connectionWeights = net->getDeviceConnectionWeights();
-	uint16_t * activationCount = net->getHostNeuronActivationCountRebalance();
+	uint16_t * activationCount = net->getDeviceNeuronActivationCountRebalance();
 	uint16_t minimumRebalanceActivations =
 		net->getMinimumRebalanceActivations();
 	float changeConstant = net->getChangeConstant();

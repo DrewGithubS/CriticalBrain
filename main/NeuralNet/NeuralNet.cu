@@ -243,9 +243,9 @@ void NeuralNet::feedforward()
 		rebalanceConnections(
 			this);
 
-	// 	zeroizeActivationCounts(
-	// 		d_neuronActivationCountRebalance,
-	// 		neuronCount);
+		zeroizeActivationCounts(
+			d_neuronActivationCountRebalance,
+			neuronCount);
 
 		rebalanceCount++;
 		feedforwardCount = 0;
