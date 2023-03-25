@@ -1,0 +1,1 @@
+float f16ToF32(uint16_t fpIn);

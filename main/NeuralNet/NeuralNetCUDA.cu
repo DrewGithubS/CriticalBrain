@@ -1,14 +1,9 @@
 // NOTE: Positive activations for good things and negative for bad things.
 // The goal of the neural net should be to maximize perception.
 
-enum {
-	NORMAL_NEURON,
-	OUTPUT_NEURON,
-	INPUT_NEURON,
-} NeuronTypes;
-
 #include <cstdint>
 #include <cstdio>
+#include <math.h>
 
 #include "NeuralNetCUDA.h"
 #include "NeuralNet.h"
@@ -16,6 +11,17 @@ enum {
 
 const uint32_t THREADSPERBLOCK = 1024;	
 #define BlockCount(x) ((x + THREADSPERBLOCK - 1)/THREADSPERBLOCK)
+
+float __device__ randFloatInRange(curandState * state, float min, float max) {
+	return (curand_uniform(state) * (max - min) + min);
+}
+
+int __device__ randIntInRange(curandState * state, float min, float max) {
+	return (int)
+				(ceil(
+					(curand_uniform(state) * 
+						((max - min) + 1))) - 1 + min);
+}
 
 __device__ uint8_t d_arrayContains(int32_t * arr, int32_t item, int len);
 
@@ -49,9 +55,8 @@ __global__ void d_randomizeNeurons(
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if(index < neurons) {
-		activationThresholds[index] = curand_uniform(curandStates + index);
-		activationThresholds[index] *= (maxValue - minValue);
-		activationThresholds[index] += minValue;
+		activationThresholds[index] =
+			randFloatInRange(curandStates + index, minValue, maxValue);
 	}
 }
 
@@ -199,11 +204,8 @@ __global__ void d_feedForward(
 
 	if(index < connections) {
 		int neuron = index / connectionsPerNeuron;
-		if(index % connectionsPerNeuron == 0) {
-			excitationLevel[neuron] = 0;
-		}
 		
-		if(specialNeurons[index] != OUTPUT_NEURON) {
+		if(specialNeurons[neuron] != OUTPUT_NEURON) {
 			atomicAdd(&excitationLevel[
 				forwardConnections[index]],
 				activations[neuron] ? connectionWeights[index] : 0);
@@ -254,11 +256,9 @@ __global__ void d_calculateActivations(
 			excitationLevel[index] > activationThresholds[index] ? 
 				0 : excitationLevel[index];
 
-		activationCount1[index] +=
-			excitationLevel[index] > activationThresholds[index];
+		activationCount1[index] += activations[index];
 
-		activationCount2[index] +=
-			excitationLevel[index] > activationThresholds[index];
+		activationCount2[index] += activations[index];
 	}
 }
 
@@ -273,8 +273,9 @@ __global__ void d_determineKilledNeurons(
 
 	if(index < neurons) {
 		activations[index] =
-			specialNeurons[index] == NORMAL_NEURON *
-			(activationCount[index] < minimumActivations ? 255 : 0);
+			(specialNeurons[index] == NORMAL_NEURON) * 
+			(activationCount[index] < minimumActivations ?
+				255 : activations[index]);
 	}
 }
 
@@ -296,47 +297,45 @@ __global__ void d_randomizeDeadNeurons(
 {
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 
-	if(index < connectionCount) {
-		int connectionIndex = index % connectionsPerNeuron;
-		int neuronIndex = index / connectionsPerNeuron;
+	if(index < neuronCount) {
+		int indexC = index * connectionsPerNeuron;
 
 		// Randomize new neuron activation thresholds
-		if(connectionIndex == 0) {
-			activationThresholds[neuronIndex] =
-				curand_uniform(curandStates + index);
-
-			activationThresholds[neuronIndex] *=
-				(maxActivation - minActivation + 0.999999);
-
-			activationThresholds[neuronIndex] +=
-				minActivation;
+		if(activations[index] == 255) {
+			activationThresholds[index] =
+				randFloatInRange(
+					curandStates + index,
+					minActivation,
+					maxActivation);
+				
 		}
 
 		// Randomize forward connections
-		if(activations[neuronIndex] == 255) {
-			forwardConnections[index] = d_genRandomNeuron(
-				curandStates,
-				index,
-				connectionsPerNeuron,
-				neuronsPerPartition,
-				partitions);
+		if(activations[index] == 255) {
+			for(int i = 0; i < connectionsPerNeuron; i++) {
+				forwardConnections[indexC + i] = d_genRandomNeuron(
+					curandStates,
+					index,
+					connectionsPerNeuron,
+					neuronsPerPartition,
+					partitions);
 
-			float weight = curand_uniform(curandStates + index);
-		    weight *= (maxWeight - minWeight + 0.999999);
-		    weight += minWeight;
-			
-		    connectionWeights[index] = weight;
-		}
+				connectionWeights[indexC + i] = randFloatInRange(
+					curandStates + index,
+					minWeight,
+					maxWeight);
 
-		// Randomize connections from neurons that died.
-		if(activations[forwardConnections[index]] == 255) {
-			forwardConnections[index] = d_genRandomNeuron(
-				curandStates,
-				index,
-				connectionsPerNeuron,
-				neuronsPerPartition,
-				partitions);
-		}
+				// Randomize connections from neurons that died.
+				if(activations[forwardConnections[index]] == 255) {
+					forwardConnections[index] = d_genRandomNeuron(
+						curandStates,
+						forwardConnections[index],
+						connectionsPerNeuron,
+						neuronsPerPartition,
+						partitions);
+				}
+			}
+		}		
 	}
 }
 
@@ -351,6 +350,7 @@ __global__ void d_zeroizeActivationCounts(
 	}
 }
 
+// TODO: Issue is here
 __global__ void d_rebalanceConnections(
 	int32_t * forwardConnections,
 	float * connectionWeights,
@@ -439,18 +439,21 @@ void setSpecialNeurons(
 	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	int inputNeuronCount = net->getInputNeuronCount();
 	int outputNeuronCount = net->getOutputNeuronCount();
+	int neuronCount = net->getNeuronCount();
+
+	gpuMemset(specialNeurons, 0, neuronCount * sizeof(uint8_t));
 
 	d_setSpecialNeurons <<< BlockCount(inputNeuronCount), THREADSPERBLOCK >>> (
 		inputNeuronIndices,
 		specialNeurons,
 		inputNeuronCount,
-		INPUT_NEURON);
+		2);
 
 	d_setSpecialNeurons <<< BlockCount(outputNeuronCount), THREADSPERBLOCK >>> (
 		outputNeuronIndices,
 		specialNeurons,
 		outputNeuronCount,
-		OUTPUT_NEURON);
+		1);
 }
 
 void createRandomConnections(
@@ -473,7 +476,7 @@ void createRandomConnections(
 
 
 	d_createRandomConnections <<< 
-		BlockCount(connections),
+		BlockCount(neurons),
 		THREADSPERBLOCK >>> (
 			curandStates,
 			minWeight,
@@ -585,8 +588,6 @@ void getNetworkOutputs(
 	int32_t * d_outputNeuronIndices = net->getDeviceOutputNeuronIndices();
 	uint32_t outputNeuronCount = net->getOutputNeuronCount();
 
-	
-
 	d_getNetworkOutputs <<< 
 		BlockCount(outputNeuronCount),
 		THREADSPERBLOCK >>> (
@@ -624,8 +625,8 @@ void calculateActivations(
 	float * excitationLevel = net->getDeviceExcitationLevel();
 	float * activationThresholds = net->getDeviceActivationThresholds();
 	uint8_t * activations = net->getDeviceActivations();
-	uint16_t * activationCount1 = net->getHostNeuronActivationCountRebalance();
-	uint16_t * activationCount2 = net->getHostNeuronActivationCountKilling();
+	uint16_t * activationCount1 = net->getDeviceNeuronActivationCountRebalance();
+	uint16_t * activationCount2 = net->getDeviceNeuronActivationCountKilling();
 	int neurons = net->getNeuronCount();
 
 	d_calculateActivations <<< 
@@ -644,7 +645,7 @@ void calculateActivations(
 void determineKilledNeurons(
 	NeuralNet * net)
 {
-	uint16_t * activationCount = net->getHostNeuronActivationCountKilling();
+	uint16_t * activationCount = net->getDeviceNeuronActivationCountKilling();
 	uint8_t * activations = net->getDeviceActivations();
 	uint8_t * specialNeurons = net->getDeviceSpecialNeurons();
 	uint16_t minimumKillingActivations = net->getMinimumKillingActivations();
@@ -820,21 +821,9 @@ __device__ int d_genRandomNeuron(
 	float maxValueZ = partitionZ == (partitions - 1) ? 0 : 1;
 
 	
-
-	float x_f = curand_uniform(state + index);
-    x_f *= (maxValueX - minValueX + 0.999999);
-    x_f += minValueX;
-    int dx = (int) truncf(x_f);
-
-    float y_f = curand_uniform(state + index);
-    y_f *= (maxValueY - minValueY + 0.999999);
-    y_f += minValueY;
-    int dy = (int) truncf(y_f);
-
-    float z_f = curand_uniform(state + index);
-    z_f *= (maxValueZ - minValueZ + 0.999999);
-    z_f += minValueZ;
-    int dz = (int) truncf(z_f);
+    int dx = randIntInRange(state + index, minValueX, maxValueX);
+    int dy = randIntInRange(state + index, minValueY, maxValueY);
+    int dz = randIntInRange(state + index, minValueZ, maxValueZ);
 
     int neuronPartitionIndex = 
     		(partitionZ + dz) * partitions * partitions +
@@ -843,13 +832,11 @@ __device__ int d_genRandomNeuron(
 
     neuronPartitionIndex *= neuronsPerPartition;
 
-	int newNeuronIndex;
-	z_f = curand_uniform(state + index);
-	// Subtracting one here so that I can guarantee this connection
-	// Doesn't point at itself
-    z_f *= (neuronsPerPartition - 1 + 0.999999);
-    z_f += 0;
-    newNeuronIndex = neuronPartitionIndex + (int) truncf(z_f);
+	int newNeuronIndex = neuronPartitionIndex;
+    newNeuronIndex += randIntInRange(
+    	state + index,
+    	0,
+    	neuronsPerPartition - 2);
     // Guarantees the connection isn't pointing at itself.
     newNeuronIndex += (newNeuronIndex >= neuronIndex);
 

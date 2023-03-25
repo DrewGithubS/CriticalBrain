@@ -7,6 +7,18 @@
 #include <cstdint>
 #include <cstdio>
 
+typedef enum {
+	NORMAL_NEURON,
+	OUTPUT_NEURON,
+	INPUT_NEURON,
+	NEURON_TYPE_COUNT
+} NeuronType;
+
+const char * const NEURON_TYPE_STRINGS[NEURON_TYPE_COUNT] {
+	"NORMAL_NEURON",
+	"OUTPUT_NEURON",
+	"INPUT_NEURON"};
+
 class NeuralNet {
 private:
 	int partitions;
@@ -34,7 +46,6 @@ private:
 	int32_t * h_forwardConnections;
 	float * h_connectionWeights;
 	float * h_activationThresholds;
-	float * h_receivingSignal;
 	float * h_excitationLevel;
 	uint8_t * h_activations;
 	uint8_t * h_specialNeurons;
@@ -63,6 +74,8 @@ private:
 
 	void loadFromFile(FILE * file);
 	void allocateAll();
+	void copyToCPU();
+	void copyToGPU();
 
 public:
 	NeuralNet();
@@ -93,8 +106,6 @@ public:
 	void setInputValues(uint8_t * inputs);
 	void feedforward();
 	void getOutputValues(uint8_t * outputs);
-	void copyToCPU();
-	void copyToGPU();
 	void printNetwork();
 	void saveToFile(FILE * file);
 	void setInputs(uint8_t * inputs);
@@ -125,7 +136,6 @@ public:
 	int32_t * getHostForwardConnections();
 	float * getHostConnectionWeights();
 	float * getHostActivationThresholds();
-	float * getHostReceivingSignal();
 	float * getHostExcitationLevel();
 	uint8_t * getHostActivations();
 	uint8_t * getHostSpecialNeurons();
