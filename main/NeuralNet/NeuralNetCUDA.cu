@@ -372,24 +372,26 @@ __global__ void d_rebalanceConnections(
 			sum += (float) activationCount[neuronIndex];
 		}
 
-		// for(int i = 0; i < connectionsPerNeuron; i++) {
-		// 	connectionWeights[connectionBegin + i] += 
-		// 		connectionsPerNeuron * 
-		// 		( (float) (activationCount[i]) - 
-		// 			(sum / (float) connectionsPerNeuron) )
-		// 				/ (sum);
-		// }
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			if(sum != 0) {
+				connectionWeights[connectionBegin + i] +=
+					connectionsPerNeuron * 
+					( (float) (activationCount[neuronIndex]) - 
+						(sum / (float) connectionsPerNeuron) )
+							/ (sum);
+			}
+		}
 
-	// 	for(int i = 0; i < connectionsPerNeuron; i++) {
-	// 		if(
-	// 		activationCount[forwardConnections[connectionBegin + i]] <
-	// 			minimumActivations || 
-	// 		fabs(connectionWeights[connectionBegin + i]) <
-	// 			minimumWeightValue) {
+		for(int i = 0; i < connectionsPerNeuron; i++) {
+			if(
+			activationCount[forwardConnections[connectionBegin + i]] <
+				minimumActivations || 
+			fabs(connectionWeights[connectionBegin + i]) <
+				minimumWeightValue) {
 
-	// 			forwardConnections[connectionBegin + i] = -1;
-	// 		}
-	// 	}
+				forwardConnections[connectionBegin + i] = -1;
+			}
+		}
 	}
 }
 
@@ -406,7 +408,7 @@ void setupRand(
 		neurons,
 		seed);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void randomizeNeurons(
@@ -426,8 +428,6 @@ void randomizeNeurons(
 		maxActivation,
 		partitions,
 		neurons);
-
-	cudaDeviceSynchronize();
 }
 
 void setSpecialNeurons(
@@ -501,7 +501,7 @@ void createRandomConnections(
 			neuronsPerPartition,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void normalizeConnections(
@@ -524,7 +524,7 @@ void normalizeConnections(
 			connectionsPerNeuron,
 			decayRate);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void setNetworkInputs(
@@ -576,7 +576,7 @@ void mainFeedforward(
 			neurons,
 			outputNeurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void getNetworkOutputs(
@@ -616,7 +616,7 @@ void doExcitationDecay(
 			decayRate,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void calculateActivations(
@@ -639,7 +639,7 @@ void calculateActivations(
 			activationCount2,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void determineKilledNeurons(
@@ -660,7 +660,7 @@ void determineKilledNeurons(
 			minimumKillingActivations,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void randomizeDeadNeurons(
@@ -714,7 +714,7 @@ void randomizeDeadNeurons(
 			neuronsPerPartition,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void zeroizeActivationCounts(
@@ -727,7 +727,7 @@ void zeroizeActivationCounts(
 			activationCount,
 			count);
 
-	cudaDeviceSynchronize();
+	
 }
 
 void rebalanceConnections(
@@ -774,7 +774,7 @@ void rebalanceConnections(
 			neuronsPerPartition,
 			neurons);
 
-	cudaDeviceSynchronize();
+	
 }
 
 
