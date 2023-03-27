@@ -7,22 +7,17 @@
 #include "Renderer.h"
 #include "renderMain.h"
 
-const uint32_t WIDTH = 1920;
-const uint32_t HEIGHT = 1080;
-const uint32_t FRAMESPERSECOND = 144;
 const uint32_t MICROSECONDSPERSECOND = 1000 * 1000;
 const uint32_t NANOSECONDSPERMICROSECOND = 1000;
-uint32_t microsecondsPerFrame = MICROSECONDSPERSECOND / FRAMESPERSECOND;
-
 uint64_t getMicrosecondsPassed(struct timespec start, struct timespec end) {
 	return ((end.tv_sec - start.tv_sec) * MICROSECONDSPERSECOND) +
 				((end.tv_nsec - start.tv_nsec) / NANOSECONDSPERMICROSECOND);
 }
 
-RenderMain::RenderMain(Organism * organismIn) {
-	renderer = new Renderer(WIDTH, HEIGHT);
-	animation = new Animation(WIDTH, HEIGHT);
-	organism = organismIn;
+RenderMain::RenderMain(Animation * animationIn) {
+	animation = animationIn;
+	renderer = new Renderer(animation->getWidth(), animation->getHeight());
+	printf("WIDTH %d, HEIGHT: %d\n", animation->getWidth(), animation->getHeight());
 }
 
 void RenderMain::render() {
@@ -35,7 +30,7 @@ void RenderMain::render() {
 		// if(microsecondsPassed >= microsecondsPerFrame) {
 			renderer->checkForEvent();
 			// renderer->getFrame();
-			animation->nextFrame(organism);
+			animation->nextFrame();
 			renderer->setFrame(animation->getImage());
 			renderer->render();
 		// } else {

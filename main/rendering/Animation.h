@@ -3,32 +3,22 @@
 
 #include <cstdint>
 
-class Organism;
-
 class Animation {
-private:
-	uint32_t width;
-	uint32_t height;
-
+protected:
 	uint32_t imageWidth;
 	uint32_t imageHeight;
-	
-	uint32_t * data;
-	uint32_t * d_data;
-	uint32_t * d_compressableImage;
-
-	uint32_t ** d_proximityData;
 
 	uint32_t imageSize;
 	uint32_t * d_image;
 	uint32_t * image;
-	uint32_t blockCountGPU;
 public:
-	Animation(uint32_t widthIn, uint32_t heightIn);
-	void init();
-	void nextFrame(Organism * organism);
-	void exit();
+	uint32_t getWidth();
+	uint32_t getHeight();
 	void * getImage();
+
+	virtual void init() = 0;
+	virtual void nextFrame() = 0;
+	virtual void exit() = 0;
 };
 
 #endif

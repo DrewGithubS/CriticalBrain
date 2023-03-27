@@ -1,5 +1,4 @@
-class Organism;
-class Animation;
+#include "Animation.h"
 class Renderer;
 
 class RenderMain {
@@ -9,8 +8,7 @@ private:
 	// uint32_t microsecondsPassed;
 	Renderer * renderer;
 	Animation * animation;
-	Organism * organism;
 public:
-	RenderMain(Organism * organismIn);
+	RenderMain(Animation * animation);
 	void render();
 };

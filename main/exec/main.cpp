@@ -5,11 +5,22 @@
 #include "organism.h"
 #include "NeuralNet.h"
 
+#include "Animation.h"
+#include "OrganismAnimation.h"
+#include "NetworkAnimation.h"
+
+const uint32_t WIDTH = 1920;
+const uint32_t HEIGHT = 1080;
+const uint32_t FRAMESPERSECOND = 144;
+const uint32_t MICROSECONDSPERSECOND = 1000 * 1000;
+const uint32_t NANOSECONDSPERMICROSECOND = 1000;
+uint32_t microsecondsPerFrame = MICROSECONDSPERSECOND / FRAMESPERSECOND;
+
 int main() {
 	// srand(time(0));
 	srand(0);
 
-	Organism organism = Organism(400, 400);
+	Organism * organism = new Organism(400, 400);
 
 	int32_t inputIndices[] = {0};
 	int32_t outputIndices[] = {31};
@@ -58,11 +69,21 @@ int main() {
 
 	net->printNetwork();
 
+	Animation * organismAnimation = 
+		new OrganismAnimation(organism, WIDTH, HEIGHT);
 
-	// RenderMain render = RenderMain(&organism);
+	Animation * networkAnimation = 
+		new NetworkAnimation(net, WIDTH, HEIGHT);
 
-	// render.render();
+	RenderMain organismRender = RenderMain(organismAnimation);
+	organismRender.render();
 
+	// RenderMain networkRender = RenderMain(networkAnimation);
+	// networkRender.render();
+
+	delete organismAnimation;
+	delete networkAnimation;
+	delete organism;
 	delete net;
 }
 
